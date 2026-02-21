@@ -9,21 +9,65 @@ type IconMapping = Record<SymbolViewProps["name"], ComponentProps<typeof Materia
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ * SF Symbols to Material Icons mappings for VIP Events app.
  */
 const MAPPING = {
+  // Navigation
   "house.fill": "home",
+  "calendar": "event",
+  "calendar.fill": "event",
+  "qrcode": "qr-code",
+  "qrcode.viewfinder": "qr-code-scanner",
+  "crown.fill": "star",
+  "person.fill": "person",
+  "person.circle.fill": "account-circle",
+  // Admin
+  "chart.bar.fill": "bar-chart",
+  "camera.fill": "camera-alt",
+  "person.2.fill": "group",
+  "bell.fill": "notifications",
+  "gear": "settings",
+  "gearshape.fill": "settings",
+  // Actions
   "paperplane.fill": "send",
-  "chevron.left.forwardslash.chevron.right": "code",
+  "checkmark.circle.fill": "check-circle",
+  "xmark.circle.fill": "cancel",
+  "arrow.right.circle.fill": "arrow-circle-right",
   "chevron.right": "chevron-right",
-} as IconMapping;
+  "chevron.left": "chevron-left",
+  "chevron.left.forwardslash.chevron.right": "code",
+  // Content
+  "ticket.fill": "confirmation-number",
+  "location.fill": "location-on",
+  "map.fill": "map",
+  "bell.badge.fill": "notification-important",
+  "creditcard.fill": "credit-card",
+  "cart.fill": "shopping-cart",
+  "star.fill": "star",
+  "lock.fill": "lock",
+  "eye.fill": "visibility",
+  "eye.slash.fill": "visibility-off",
+  "plus.circle.fill": "add-circle",
+  "minus.circle.fill": "remove-circle",
+  "trash.fill": "delete",
+  "pencil": "edit",
+  "magnifyingglass": "search",
+  "info.circle.fill": "info",
+  "exclamationmark.triangle.fill": "warning",
+  "checkmark.seal.fill": "verified",
+  "clock.fill": "access-time",
+  "arrow.clockwise": "refresh",
+  "square.and.arrow.up": "share",
+  "doc.fill": "description",
+  "photo.fill": "photo",
+  "wine.bottle": "wine-bar",
+  "fork.knife": "restaurant",
+  "music.note": "music-note",
+  "sparkles": "auto-awesome",
+} as unknown as IconMapping;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
  */
 export function IconSymbol({
   name,

@@ -8,6 +8,9 @@ export const themeColors: {
   success: { light: string; dark: string };
   warning: { light: string; dark: string };
   error: { light: string; dark: string };
+  gold: { light: string; dark: string };
+  goldLight: { light: string; dark: string };
+  darkCard: { light: string; dark: string };
 };
 
 declare const themeConfig: {

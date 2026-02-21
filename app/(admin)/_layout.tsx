@@ -5,12 +5,10 @@ import { Platform } from "react-native";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 
-export default function TabLayout() {
-  const colors = useColors();
+export default function AdminLayout() {
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const tabBarHeight = 56 + bottomPadding;
@@ -25,8 +23,8 @@ export default function TabLayout() {
   }, [isAuthenticated, loading]);
 
   useEffect(() => {
-    if (!loading && isAuthenticated && (me as any)?.role === "admin") {
-      router.replace("/(admin)" as any);
+    if (!loading && isAuthenticated && me && (me as any)?.role !== "admin") {
+      router.replace("/(tabs)" as any);
     }
   }, [isAuthenticated, loading, me]);
 
@@ -42,8 +40,8 @@ export default function TabLayout() {
           paddingBottom: bottomPadding,
           height: tabBarHeight,
           backgroundColor: "#0A0A0A",
-          borderTopColor: "#2A2A2A",
-          borderTopWidth: 0.5,
+          borderTopColor: "#C9A84C22",
+          borderTopWidth: 1,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -55,8 +53,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Inicio",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="chart.bar.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: "Escanear",
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="qrcode.viewfinder" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -67,24 +72,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="my-qr"
+        name="guests"
         options={{
-          title: "Mi QR",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="qrcode" color={color} />,
+          title: "Invitados",
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.2.fill" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="vip-orders"
+        name="notifications"
         options={{
-          title: "VIP",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="crown.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.fill" color={color} />,
+          title: "Notifs",
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="bell.fill" color={color} />,
         }}
       />
     </Tabs>

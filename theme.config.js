@@ -1,14 +1,17 @@
 /** @type {const} */
 const themeColors = {
-  primary: { light: '#0a7ea4', dark: '#0a7ea4' },
-  background: { light: '#ffffff', dark: '#151718' },
-  surface: { light: '#f5f5f5', dark: '#1e2022' },
-  foreground: { light: '#11181C', dark: '#ECEDEE' },
-  muted: { light: '#687076', dark: '#9BA1A6' },
-  border: { light: '#E5E7EB', dark: '#334155' },
-  success: { light: '#22C55E', dark: '#4ADE80' },
-  warning: { light: '#F59E0B', dark: '#FBBF24' },
-  error: { light: '#EF4444', dark: '#F87171' },
+  primary: { light: '#C9A84C', dark: '#C9A84C' },
+  background: { light: '#0A0A0A', dark: '#0A0A0A' },
+  surface: { light: '#1A1A1A', dark: '#1A1A1A' },
+  foreground: { light: '#F5E6C8', dark: '#F5E6C8' },
+  muted: { light: '#8A7A5A', dark: '#8A7A5A' },
+  border: { light: '#2A2A2A', dark: '#2A2A2A' },
+  success: { light: '#27AE60', dark: '#2ECC71' },
+  warning: { light: '#F39C12', dark: '#F1C40F' },
+  error: { light: '#C0392B', dark: '#E74C3C' },
+  gold: { light: '#C9A84C', dark: '#F5D78E' },
+  goldLight: { light: '#F5D78E', dark: '#F5D78E' },
+  darkCard: { light: '#1A1A1A', dark: '#1A1A1A' },
 };
 
 module.exports = { themeColors };
