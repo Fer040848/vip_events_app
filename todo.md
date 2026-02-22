@@ -123,3 +123,9 @@
 - [x] Corregir kotlinVersion a 2.0.21 (requerido por react-native-gesture-handler v2.28.0)
 - [x] Agregar compileSdkVersion: 35, targetSdkVersion: 35, buildToolsVersion: 35.0.0
 - [x] Verificar compatibilidad de dependencias nativas con Expo SDK 54
+
+## Bug Fix v7 - expo-barcode-scanner incompatible con Kotlin 2.0
+- [x] Desinstalar expo-barcode-scanner (deprecado, incompatible con Kotlin 2.0.21)
+- [x] Instalar expo-camera v16.0.18 (reemplazo oficial recomendado por Expo)
+- [x] Agregar plugin expo-camera al app.config.ts con permisos de cámara
+- [x] Verificar que no hay más dependencias incompatibles con Kotlin 2.0.21
