@@ -64,6 +64,9 @@ const MAPPING = {
   "fork.knife": "restaurant",
   "music.note": "music-note",
   "sparkles": "auto-awesome",
+  "bubble.left.and.bubble.right.fill": "chat",
+  "message.fill": "chat",
+  "chat.bubble.fill": "chat",
 } as unknown as IconMapping;
 
 /**

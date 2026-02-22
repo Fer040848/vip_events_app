@@ -121,3 +121,52 @@ export const userNotifications = mysqlTable("user_notifications", {
 
 export type UserNotification = typeof userNotifications.$inferSelect;
 export type InsertUserNotification = typeof userNotifications.$inferInsert;
+
+/**
+ * Access codes — invitation codes for entering the app (tlc001-tlc050)
+ */
+export const accessCodes = mysqlTable("access_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 20 }).notNull().unique(),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  displayName: varchar("displayName", { length: 100 }).notNull(),
+  userId: int("userId"),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AccessCode = typeof accessCodes.$inferSelect;
+export type InsertAccessCode = typeof accessCodes.$inferInsert;
+
+/**
+ * Chat messages — real-time group chat
+ */
+export const chatMessages = mysqlTable("chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 100 }).notNull(),
+  userCode: varchar("userCode", { length: 20 }).notNull(),
+  isAdmin: boolean("isAdmin").default(false).notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+/**
+ * User presence — tracks who is online
+ */
+export const userPresence = mysqlTable("user_presence", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  userName: varchar("userName", { length: 100 }).notNull(),
+  userCode: varchar("userCode", { length: 20 }).notNull(),
+  isAdmin: boolean("isAdmin").default(false).notNull(),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+  isOnline: boolean("isOnline").default(false).notNull(),
+});
+
+export type UserPresence = typeof userPresence.$inferSelect;
+export type InsertUserPresence = typeof userPresence.$inferInsert;

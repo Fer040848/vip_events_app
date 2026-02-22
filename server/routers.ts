@@ -151,6 +151,69 @@ export const appRouter = router({
         publishedEvents: allEvents.filter((e) => e.status === "published").length,
       };
     }),
+    accessCodes: protectedProcedure.query(({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.getAllAccessCodes();
+    }),
+  }),
+  accessCodes: router({
+    // Seed codes on startup (called from app init)
+    seed: publicProcedure.mutation(() => db.seedAccessCodes()),
+    // Validate and login with code
+    login: publicProcedure.input(z.object({ code: z.string() })).mutation(async ({ input }) => {
+      await db.seedAccessCodes();
+      const accessCode = await db.getAccessCodeByCode(input.code);
+      if (!accessCode) throw new Error("Código inválido. Verifica e intenta de nuevo.");
+      if (!accessCode.isActive) throw new Error("Este código ha sido desactivado.");
+      // Create or get user for this code
+      const openId = `code_${accessCode.code}`;
+      await db.upsertUser({
+        openId,
+        name: accessCode.displayName,
+        loginMethod: "access_code",
+        role: accessCode.role,
+        lastSignedIn: new Date(),
+      });
+      const user = await db.getUserByOpenId(openId);
+      if (!user) throw new Error("Error al crear usuario");
+      // Link code to user
+      await db.linkAccessCodeToUser(accessCode.id, user.id);
+      return { user, accessCode };
+    }),
+  }),
+  chat: router({
+    // Get recent messages
+    messages: protectedProcedure.input(z.object({ afterId: z.number().optional() })).query(({ input }) =>
+      db.getLatestChatMessages(input.afterId, 80)
+    ),
+    // Send a message
+    send: protectedProcedure.input(z.object({ message: z.string().min(1).max(1000) })).mutation(({ ctx, input }) => {
+      const userCode = (ctx.user as any).openId?.replace("code_", "") ?? "";
+      return db.createChatMessage({
+        userId: ctx.user.id,
+        userName: ctx.user.name ?? "Invitado",
+        userCode,
+        isAdmin: ctx.user.role === "admin",
+        message: input.message,
+      });
+    }),
+    // Update presence (heartbeat)
+    heartbeat: protectedProcedure.mutation(({ ctx }) => {
+      const userCode = (ctx.user as any).openId?.replace("code_", "") ?? "";
+      return db.upsertPresence({
+        userId: ctx.user.id,
+        userName: ctx.user.name ?? "Invitado",
+        userCode,
+        isAdmin: ctx.user.role === "admin",
+        isOnline: true,
+      });
+    }),
+    // Go offline
+    offline: protectedProcedure.mutation(({ ctx }) =>
+      db.setPresenceOffline(ctx.user.id)
+    ),
+    // Get online users
+    onlineUsers: protectedProcedure.query(() => db.getOnlineUsers()),
   }),
 });
 

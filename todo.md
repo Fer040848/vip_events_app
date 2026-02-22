@@ -62,3 +62,15 @@
 - [x] Revisar errores de TypeScript (0 errores)
 - [x] Crear checkpoint final
 - [x] Entregar al usuario
+
+## Códigos de Acceso y Chat (Nueva Funcionalidad)
+- [x] Crear tabla access_codes con 50 códigos tlc001-tlc050
+- [x] Crear tabla chat_messages para mensajes en tiempo real
+- [x] Crear tabla user_presence para usuarios conectados
+- [x] Actualizar server/db.ts con funciones de códigos, chat y presencia
+- [x] Actualizar server/routers.ts con rutas de códigos, chat y presencia
+- [x] Reemplazar pantalla de login con entrada de código de invitación
+- [x] Implementar pantalla de Chat en tiempo real
+- [x] Mostrar usuarios conectados en el chat
+- [x] Integrar Chat en tab bar de usuario y admin
+- [x] Ejecutar migraciones de base de datos

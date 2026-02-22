@@ -1,6 +1,6 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
-import { getUserByOpenId, upsertUser } from "../db";
+import { getUserByOpenId, upsertUser, seedAccessCodes, getAccessCodeByCode, linkAccessCodeToUser } from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -125,6 +125,61 @@ export function registerOAuthRoutes(app: Express) {
     } catch (error) {
       console.error("[OAuth] Mobile exchange failed", error);
       res.status(500).json({ error: "OAuth mobile exchange failed" });
+    }
+  });
+
+  // Login with access code (tlc001-tlc050)
+  app.post("/api/auth/code-login", async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body;
+      if (!code || typeof code !== "string") {
+        res.status(400).json({ error: "Código requerido" });
+        return;
+      }
+      // Seed codes if not yet seeded
+      await seedAccessCodes();
+      const accessCode = await getAccessCodeByCode(code.toLowerCase().trim());
+      if (!accessCode) {
+        res.status(401).json({ error: "Código inválido. Verifica e intenta de nuevo." });
+        return;
+      }
+      if (!accessCode.isActive) {
+        res.status(401).json({ error: "Este código ha sido desactivado." });
+        return;
+      }
+      // Create or update user for this code
+      const openId = `code_${accessCode.code}`;
+      await upsertUser({
+        openId,
+        name: accessCode.displayName,
+        loginMethod: "access_code",
+        role: accessCode.role,
+        lastSignedIn: new Date(),
+      });
+      const user = await getUserByOpenId(openId);
+      if (!user) {
+        res.status(500).json({ error: "Error al crear usuario" });
+        return;
+      }
+      // Link code to user
+      await linkAccessCodeToUser(accessCode.id, user.id);
+      // Create session token
+      const sessionToken = await sdk.createSessionToken(openId, {
+        name: accessCode.displayName,
+        expiresInMs: ONE_YEAR_MS,
+      });
+      const cookieOptions = getSessionCookieOptions(req);
+      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.json({
+        app_session_id: sessionToken,
+        user: buildUserResponse(user),
+        role: accessCode.role,
+        displayName: accessCode.displayName,
+        code: accessCode.code,
+      });
+    } catch (error) {
+      console.error("[Auth] Code login failed", error);
+      res.status(500).json({ error: "Error interno del servidor" });
     }
   });
 

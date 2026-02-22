@@ -15,6 +15,13 @@
       "when": 1771659653612,
       "tag": "0001_organic_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1771781499330,
+      "tag": "0002_aromatic_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

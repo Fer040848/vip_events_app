@@ -1,16 +1,22 @@
 import { and, desc, eq, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  accessCodes,
+  chatMessages,
   events,
   invitations,
   notifications,
   userNotifications,
+  userPresence,
   users,
   vipOrders,
+  type InsertAccessCode,
+  type InsertChatMessage,
   type InsertEvent,
   type InsertInvitation,
   type InsertNotification,
   type InsertUser,
+  type InsertUserPresence,
   type InsertVipOrder,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -224,4 +230,108 @@ export async function getUserUnreadNotificationCount(userId: number) {
   const readNotifs = await db.select().from(userNotifications).where(and(eq(userNotifications.userId, userId), eq(userNotifications.isRead, true)));
   const readIds = new Set(readNotifs.map((n) => n.notificationId));
   return allNotifs.filter((n) => !readIds.has(n.id)).length;
+}
+
+// ============================================================
+// ACCESS CODES
+// ============================================================
+
+export async function seedAccessCodes() {
+  const db = await getDb();
+  if (!db) return;
+  // Check if already seeded
+  const existing = await db.select().from(accessCodes).limit(1);
+  if (existing.length > 0) return;
+  const codes: InsertAccessCode[] = [];
+  for (let i = 1; i <= 50; i++) {
+    const num = String(i).padStart(3, "0");
+    const code = `tlc${num}`;
+    const isAdmin = i <= 3;
+    codes.push({
+      code,
+      role: isAdmin ? "admin" : "user",
+      displayName: isAdmin ? `Admin ${i}` : `Invitado ${i}`,
+      isActive: true,
+    });
+  }
+  await db.insert(accessCodes).values(codes);
+}
+
+export async function getAccessCodeByCode(code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(accessCodes).where(eq(accessCodes.code, code.toLowerCase().trim())).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function linkAccessCodeToUser(codeId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(accessCodes).set({ userId, lastUsedAt: new Date() }).where(eq(accessCodes.id, codeId));
+}
+
+export async function getAllAccessCodes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accessCodes).orderBy(accessCodes.id);
+}
+
+// ============================================================
+// CHAT MESSAGES
+// ============================================================
+
+export async function getChatMessages(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(chatMessages).orderBy(desc(chatMessages.createdAt)).limit(limit);
+}
+
+export async function createChatMessage(data: InsertChatMessage) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(chatMessages).values(data);
+  return result[0].insertId;
+}
+
+export async function getLatestChatMessages(afterId?: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  if (afterId) {
+    const { gt } = await import("drizzle-orm");
+    return db.select().from(chatMessages).where(gt(chatMessages.id, afterId)).orderBy(chatMessages.createdAt).limit(limit);
+  }
+  const msgs = await db.select().from(chatMessages).orderBy(desc(chatMessages.createdAt)).limit(limit);
+  return msgs.reverse();
+}
+
+// ============================================================
+// USER PRESENCE
+// ============================================================
+
+export async function upsertPresence(data: InsertUserPresence) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(userPresence).values({ ...data, lastSeenAt: new Date(), isOnline: true })
+    .onDuplicateKeyUpdate({ set: { lastSeenAt: new Date(), isOnline: true, userName: data.userName, userCode: data.userCode, isAdmin: data.isAdmin } });
+}
+
+export async function setPresenceOffline(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(userPresence).set({ isOnline: false, lastSeenAt: new Date() }).where(eq(userPresence.userId, userId));
+}
+
+export async function getOnlineUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  // Users seen in last 2 minutes are considered online
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+  const { gte: gteOp } = await import("drizzle-orm");
+  return db.select().from(userPresence).where(and(eq(userPresence.isOnline, true), gteOp(userPresence.lastSeenAt, twoMinutesAgo))).orderBy(userPresence.userName);
+}
+
+export async function getAllPresence() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userPresence).orderBy(desc(userPresence.lastSeenAt));
 }
