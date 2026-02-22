@@ -74,3 +74,15 @@
 - [x] Mostrar usuarios conectados en el chat
 - [x] Integrar Chat en tab bar de usuario y admin
 - [x] Ejecutar migraciones de base de datos
+
+## Mejoras v2 (Implementación de las 4 sugerencias)
+- [x] Backend: ruta para actualizar nombre de usuario
+- [x] Backend: ruta para guardar push token del dispositivo
+- [x] Backend: ruta de polling de mensajes nuevos (afterId)
+- [x] Backend: envío de push notifications desde admin
+- [x] Pantalla de configuración de nombre al primer acceso
+- [x] Redirección automática a setup-name si no tiene nombre personalizado
+- [x] Polling automático del chat cada 5s
+- [x] Presencia en tiempo real mejorada (actualizar al entrar/salir del chat)
+- [x] Notificaciones push nativas desde el panel admin
+- [x] Registrar push token al iniciar sesión

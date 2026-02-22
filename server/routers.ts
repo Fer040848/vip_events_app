@@ -181,6 +181,73 @@ export const appRouter = router({
       return { user, accessCode };
     }),
   }),
+  users: router({
+    updateName: protectedProcedure.input(z.object({ name: z.string().min(1).max(100) })).mutation(async ({ ctx, input }) => {
+      await db.updateUserName(ctx.user.id, input.name.trim());
+      // Also update chat presence name
+      const userCode = (ctx.user as any).openId?.replace("code_", "") ?? "";
+      await db.upsertPresence({
+        userId: ctx.user.id,
+        userName: input.name.trim(),
+        userCode,
+        isAdmin: ctx.user.role === "admin",
+        isOnline: true,
+      });
+      return { success: true };
+    }),
+    savePushToken: protectedProcedure.input(z.object({ token: z.string() })).mutation(async ({ ctx, input }) => {
+      await db.savePushToken(ctx.user.id, input.token);
+      return { success: true };
+    }),
+    me: protectedProcedure.query(({ ctx }) => ctx.user),
+  }),
+  push: router({
+    sendToAll: protectedProcedure.input(z.object({
+      title: z.string().min(1).max(255),
+      body: z.string().min(1).max(1000),
+      data: z.record(z.string(), z.unknown()).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      const tokens = await db.getAllPushTokens();
+      if (tokens.length === 0) return { sent: 0, failed: 0 };
+      const messages = tokens.map((token) => ({
+        to: token,
+        title: input.title,
+        body: input.body,
+        data: input.data ?? {},
+        sound: "default" as const,
+        priority: "high" as const,
+      }));
+      // Send in chunks of 100 (Expo limit)
+      let sent = 0;
+      let failed = 0;
+      for (let i = 0; i < messages.length; i += 100) {
+        const chunk = messages.slice(i, i + 100);
+        try {
+          const response = await fetch("https://exp.host/--/api/v2/push/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "gzip, deflate" },
+            body: JSON.stringify(chunk),
+          });
+          const result = await response.json();
+          const data = result.data ?? [];
+          for (const item of data) {
+            if (item.status === "ok") sent++;
+            else failed++;
+          }
+        } catch (e) {
+          failed += chunk.length;
+        }
+      }
+      // Also save as notification in DB
+      await db.createNotification({
+        title: input.title,
+        body: input.body,
+        type: "general",
+      });
+      return { sent, failed, total: tokens.length };
+    }),
+  }),
   chat: router({
     // Get recent messages
     messages: protectedProcedure.input(z.object({ afterId: z.number().optional() })).query(({ input }) =>

@@ -10,11 +10,24 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  AppState,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
+
+// Configure notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 type ChatMessage = {
   id: number;
@@ -36,23 +49,24 @@ type OnlineUser = {
   lastSeenAt: Date | string;
 };
 
+const POLL_INTERVAL = 5000; // 5 seconds
+
 export default function ChatScreen() {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [showOnline, setShowOnline] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [lastId, setLastId] = useState<number | undefined>(undefined);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const flatListRef = useRef<FlatList>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const appStateRef = useRef(AppState.currentState);
 
-  // Fetch messages
-  const { data: initialMessages, isLoading } = trpc.chat.messages.useQuery(
-    { afterId: undefined },
-    { enabled: !!user }
-  );
+  // tRPC utils for direct queries
+  const utils = trpc.useUtils();
 
-  // Online users
+  // Online users with auto-refresh
   const { data: onlineUsers, refetch: refetchOnline } = trpc.chat.onlineUsers.useQuery(
     undefined,
     { enabled: !!user, refetchInterval: 15000 }
@@ -60,31 +74,94 @@ export default function ChatScreen() {
 
   // Send message mutation
   const sendMutation = trpc.chat.send.useMutation();
-
-  // Heartbeat mutation
   const heartbeatMutation = trpc.chat.heartbeat.useMutation();
-
-  // Offline mutation
   const offlineMutation = trpc.chat.offline.useMutation();
+  const savePushToken = trpc.users.savePushToken.useMutation();
 
-  // Fetch new messages polling
-  const fetchNewMessages = useCallback(async () => {
-    if (!user) return;
+  // Register push notifications
+  useEffect(() => {
+    if (!user || Platform.OS === "web") return;
+    registerForPushNotifications();
+  }, [user]);
+
+  const registerForPushNotifications = async () => {
     try {
-      // We use a direct query approach via utils
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== "granted") return;
+
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: "vip-events-app",
+      });
+      if (tokenData?.data) {
+        await savePushToken.mutateAsync({ token: tokenData.data });
+      }
+    } catch (e) {
+      // Push token registration is optional, don't crash
+    }
+  };
+
+  // Load initial messages
+  const loadInitialMessages = useCallback(async () => {
+    try {
+      const data = await utils.chat.messages.fetch({ afterId: undefined });
+      if (data && data.length > 0) {
+        setMessages(data as ChatMessage[]);
+        setLastId(data[data.length - 1].id);
+      }
     } catch (e) {
       // ignore
+    } finally {
+      setIsLoadingInitial(false);
     }
-  }, [user, lastId]);
+  }, [utils]);
 
-  // Initialize messages
-  useEffect(() => {
-    if (initialMessages && initialMessages.length > 0) {
-      setMessages(initialMessages as ChatMessage[]);
-      const last = initialMessages[initialMessages.length - 1];
-      setLastId(last.id);
+  // Poll for new messages
+  const pollMessages = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await utils.chat.messages.fetch({ afterId: lastId });
+      if (data && data.length > 0) {
+        setMessages((prev) => {
+          // Avoid duplicates
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newMsgs = (data as ChatMessage[]).filter((m) => !existingIds.has(m.id));
+          if (newMsgs.length === 0) return prev;
+          return [...prev, ...newMsgs];
+        });
+        setLastId(data[data.length - 1].id);
+        // Scroll to bottom on new messages
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    } catch (e) {
+      // ignore polling errors
     }
-  }, [initialMessages]);
+  }, [user, lastId, utils]);
+
+  // Initialize
+  useEffect(() => {
+    if (!user) return;
+    loadInitialMessages();
+  }, [user]);
+
+  // Start polling when messages are loaded
+  useEffect(() => {
+    if (!user || isLoadingInitial) return;
+
+    pollingRef.current = setInterval(() => {
+      pollMessages();
+    }, POLL_INTERVAL);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [user, isLoadingInitial, pollMessages]);
 
   // Heartbeat every 30s
   useEffect(() => {
@@ -93,20 +170,37 @@ export default function ChatScreen() {
     heartbeatRef.current = setInterval(() => {
       heartbeatMutation.mutate();
     }, 30000);
+
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       offlineMutation.mutate();
     };
   }, [user]);
 
-  // Scroll to bottom when messages change
+  // Handle app state changes (foreground/background)
   useEffect(() => {
-    if (messages.length > 0) {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === "active") {
+        // App came to foreground — poll immediately
+        pollMessages();
+        heartbeatMutation.mutate();
+      } else if (nextAppState.match(/inactive|background/)) {
+        // App went to background — go offline
+        offlineMutation.mutate();
+      }
+      appStateRef.current = nextAppState;
+    });
+    return () => subscription.remove();
+  }, [pollMessages]);
+
+  // Scroll to bottom when messages first load
+  useEffect(() => {
+    if (!isLoadingInitial && messages.length > 0) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }, 200);
     }
-  }, [messages.length]);
+  }, [isLoadingInitial]);
 
   const handleSend = async () => {
     const text = message.trim();
@@ -119,27 +213,27 @@ export default function ChatScreen() {
     }
 
     // Optimistic update
+    const tempId = Date.now();
     const tempMsg: ChatMessage = {
-      id: Date.now(),
+      id: tempId,
       userId: user.id,
       userName: user.name ?? "Yo",
-      userCode: user.openId?.replace("code_", "") ?? "",
-      isAdmin: false,
+      userCode: (user as any).openId?.replace("code_", "") ?? "",
+      isAdmin: (user as any).role === "admin",
       message: text,
       createdAt: new Date(),
     };
     setMessages((prev) => [...prev, tempMsg]);
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
       const newId = await sendMutation.mutateAsync({ message: text });
-      // Replace temp message with real one
       setMessages((prev) =>
-        prev.map((m) => (m.id === tempMsg.id ? { ...m, id: newId as number } : m))
+        prev.map((m) => (m.id === tempId ? { ...m, id: newId as number } : m))
       );
       setLastId(newId as number);
     } catch (e) {
-      // Remove optimistic message on error
-      setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
     }
   };
 
@@ -196,7 +290,7 @@ export default function ChatScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>💬 Chat VIP</Text>
-          <Text style={styles.headerSub}>Centro de comunicación exclusivo</Text>
+          <Text style={styles.headerSub}>Actualiza cada 5 segundos</Text>
         </View>
         <TouchableOpacity
           style={styles.onlineBtn}
@@ -211,10 +305,9 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         {/* Messages */}
-        {isLoading ? (
+        {isLoadingInitial ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color="#C9A84C" size="large" />
             <Text style={styles.loadingText}>Cargando mensajes...</Text>
@@ -235,9 +328,6 @@ export default function ChatScreen() {
                   Este es el chat exclusivo para invitados VIP.
                 </Text>
               </View>
-            }
-            onContentSizeChange={() =>
-              flatListRef.current?.scrollToEnd({ animated: false })
             }
           />
         )}
@@ -343,9 +433,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   headerSub: {
-    fontSize: 11,
-    color: "#666",
+    fontSize: 10,
+    color: "#444",
     marginTop: 2,
+    letterSpacing: 0.3,
   },
   onlineBtn: {
     flexDirection: "row",
@@ -553,7 +644,6 @@ const styles = StyleSheet.create({
     color: "#000",
     fontWeight: "700",
   },
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",

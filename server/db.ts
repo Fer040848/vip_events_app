@@ -1,4 +1,4 @@
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   accessCodes,
@@ -334,4 +334,35 @@ export async function getAllPresence() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(userPresence).orderBy(desc(userPresence.lastSeenAt));
+}
+
+// ============================================================
+// USER NAME & PUSH TOKEN
+// ============================================================
+export async function updateUserName(userId: number, name: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ name, hasSetName: true, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
+export async function savePushToken(userId: number, pushToken: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ pushToken, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
+export async function getAllPushTokens(): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.select({ pushToken: users.pushToken }).from(users).where(isNotNull(users.pushToken));
+  return result.map((r) => r.pushToken!).filter(Boolean);
+}
+
+export async function getPushTokensByUserIds(userIds: number[]): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  if (userIds.length === 0) return [];
+  const { inArray } = await import("drizzle-orm");
+  const result = await db.select({ pushToken: users.pushToken }).from(users).where(inArray(users.id, userIds));
+  return result.map((r) => r.pushToken!).filter(Boolean);
 }

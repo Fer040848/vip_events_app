@@ -21,6 +21,8 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   phone: varchar("phone", { length: 20 }),
   avatarUrl: text("avatarUrl"),
+  pushToken: text("pushToken"),
+  hasSetName: boolean("hasSetName").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

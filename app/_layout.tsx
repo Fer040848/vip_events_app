@@ -90,6 +90,7 @@ export default function RootLayout() {
             <Stack.Screen name="(admin)" />
             <Stack.Screen name="login" />
             <Stack.Screen name="event/[id]" />
+            <Stack.Screen name="setup-name" />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="light" />

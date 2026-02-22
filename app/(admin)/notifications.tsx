@@ -28,17 +28,25 @@ export default function AdminNotificationsScreen() {
   >("general");
   const [selectedEventId, setSelectedEventId] = useState<number | undefined>(undefined);
 
+  const [pushResult, setPushResult] = useState<{ sent: number; failed: number; total?: number } | null>(null);
+
   const { data: events } = trpc.events.listAll.useQuery();
   const { data: notifications, refetch } = trpc.notifications.list.useQuery();
 
   const sendNotification = trpc.notifications.send.useMutation({
-    onSuccess: () => {
+    onSuccess: () => refetch(),
+    onError: (err: any) => Alert.alert("Error", err.message),
+  });
+
+  const sendPush = trpc.push.sendToAll.useMutation({
+    onSuccess: (result) => {
+      setPushResult(result);
       refetch();
       setTitle("");
       setBody("");
       Alert.alert(
         "✅ Notificación enviada",
-        "La notificación fue enviada a todos los usuarios.",
+        `Push nativa: ${result.sent} enviadas, ${result.failed} fallidas.\nTotal de dispositivos: ${result.total}`,
         [{ text: "OK" }]
       );
     },
@@ -54,13 +62,20 @@ export default function AdminNotificationsScreen() {
       Alert.alert("Error", "El mensaje es requerido");
       return;
     }
+    // Send both: in-app notification AND native push
     sendNotification.mutate({
       title: title.trim(),
       body: body.trim(),
       type: selectedType,
       eventId: selectedEventId,
     });
+    sendPush.mutate({
+      title: title.trim(),
+      body: body.trim(),
+    });
   };
+
+  const isSending = sendNotification.isPending || sendPush.isPending;
 
   const TYPE_COLORS: Record<string, string> = {
     general: "#8A7A5A",
@@ -210,15 +225,15 @@ export default function AdminNotificationsScreen() {
               <TouchableOpacity
                 style={[
                   styles.sendBtn,
-                  sendNotification.isPending && styles.sendBtnDisabled,
+                  isSending && styles.sendBtnDisabled,
                 ]}
                 onPress={handleSend}
-                disabled={sendNotification.isPending}
+                disabled={isSending}
               >
-                {sendNotification.isPending ? (
+                {isSending ? (
                   <ActivityIndicator color="#0A0A0A" />
                 ) : (
-                  <Text style={styles.sendBtnText}>📢 Enviar a todos los usuarios</Text>
+                  <Text style={styles.sendBtnText}>📢 Enviar push + notificación a todos</Text>
                 )}
               </TouchableOpacity>
 

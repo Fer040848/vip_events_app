@@ -67,8 +67,11 @@ export default function LoginScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      // Navigate based on role
-      if (data.role === "admin") {
+      // Navigate based on role and name setup
+      const hasSetName = data.user?.hasSetName;
+      if (!hasSetName) {
+        router.replace("/setup-name" as any);
+      } else if (data.role === "admin") {
         router.replace("/(admin)");
       } else {
         router.replace("/(tabs)");
