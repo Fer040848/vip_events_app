@@ -117,3 +117,9 @@
 - [x] Chat: modal de usuarios online muestra lista completa solo a admin
 - [x] Chat: usuarios regulares solo ven el conteo de conectados
 - [x] Verificar que el panel admin solo sea accesible con códigos tlc001-tlc003
+
+## Bug Fix v6 - Error Gradle Android
+- [x] BUGFIX: react-native-gesture-handler falla en compilación Android (Gradle build failed)
+- [x] Corregir kotlinVersion a 2.0.21 (requerido por react-native-gesture-handler v2.28.0)
+- [x] Agregar compileSdkVersion: 35, targetSdkVersion: 35, buildToolsVersion: 35.0.0
+- [x] Verificar compatibilidad de dependencias nativas con Expo SDK 54
