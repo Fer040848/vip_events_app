@@ -283,8 +283,13 @@ export const appRouter = router({
     offline: protectedProcedure.mutation(({ ctx }) =>
       db.setPresenceOffline(ctx.user.id)
     ),
-    // Get online users
-    onlineUsers: protectedProcedure.query(() => db.getOnlineUsers()),
+    // Get online users — admin only sees full list; regular users only see count
+    onlineUsers: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.getOnlineUsers();
+    }),
+    // Online count only (for regular users)
+    onlineCount: protectedProcedure.query(() => db.getOnlineUsers().then((u) => ({ count: u.length }))),
   }),
   reactions: router({
     add: protectedProcedure.input(z.object({

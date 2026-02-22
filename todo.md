@@ -105,3 +105,15 @@
 - [x] Mejora adicional 1: Tabla de posiciones/Leaderboard de comunidad VIP
 - [x] Mejora adicional 2: Mapa interactivo del evento con navegación (Apple Maps, Google Maps, Waze)
 - [x] Mejora adicional 3: Plantillas de recordatorio de pago automático en panel admin
+
+## Seguridad v5 - Restricción de datos a admin
+- [x] Proteger ruta users.list (solo admin)
+- [x] Proteger ruta invitations.getAll (solo admin)
+- [x] Proteger ruta vipOrders.getAllOrders (solo admin)
+- [x] Proteger ruta chat.onlineUsers (solo admin)
+- [x] Agregar ruta chat.onlineCount para usuarios regulares (solo conteo)
+- [x] Leaderboard: ocultar códigos de acceso a usuarios regulares
+- [x] Leaderboard: pestaña 'Conectados ahora' solo visible para admin
+- [x] Chat: modal de usuarios online muestra lista completa solo a admin
+- [x] Chat: usuarios regulares solo ven el conteo de conectados
+- [x] Verificar que el panel admin solo sea accesible con códigos tlc001-tlc003

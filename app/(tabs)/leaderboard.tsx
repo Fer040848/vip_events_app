@@ -16,17 +16,28 @@ const CROWN_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
 
 export default function LeaderboardScreen() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"chat" | "events">("chat");
+  const isAdmin = (user as any)?.role === "admin";
+  const [activeTab, setActiveTab] = useState<"chat" | "online">("chat");
 
   const { data: chatMessages, isLoading: loadingChat } = trpc.chat.messages.useQuery({ afterId: undefined });
-  const { data: invitations, isLoading: loadingInv } = trpc.invitations.myInvitations.useQuery(undefined, {
-    enabled: !!user,
-  });
-  const { data: presence } = trpc.chat.onlineUsers.useQuery(undefined, {
+
+  // Only admins can see the full online users list
+  const { data: onlineUsers } = trpc.chat.onlineUsers.useQuery(undefined, {
+    enabled: isAdmin,
     refetchInterval: 30000,
   });
 
-  // Build chat leaderboard from messages
+  // Regular users only see a count
+  const { data: onlineCountData } = trpc.chat.onlineCount.useQuery(undefined, {
+    enabled: !isAdmin,
+    refetchInterval: 30000,
+  });
+
+  const onlineCount = isAdmin
+    ? (onlineUsers ?? []).filter((p: any) => p.isOnline).length
+    : (onlineCountData?.count ?? 0);
+
+  // Build chat leaderboard from messages — shows names but NOT codes for regular users
   const chatLeaderboard = (() => {
     if (!chatMessages) return [];
     const counts: Record<string, { name: string; code: string; count: number; isAdmin: boolean }> = {};
@@ -45,10 +56,7 @@ export default function LeaderboardScreen() {
     return Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 20);
   })();
 
-  // Online users
-  const onlineUsers = (presence ?? []).filter((p: any) => p.isOnline);
-  const isLoading = loadingChat || loadingInv;
-
+  const isLoading = loadingChat;
   const myCode = (user as any)?.openId?.replace("code_", "") ?? "";
   const myRankChat = chatLeaderboard.findIndex((u) => u.code === myCode);
 
@@ -60,28 +68,30 @@ export default function LeaderboardScreen() {
           <Text style={styles.headerTitle}>Comunidad VIP</Text>
           <View style={styles.onlineBadge}>
             <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>{onlineUsers.length} en línea</Text>
+            <Text style={styles.onlineText}>{onlineCount} en línea</Text>
           </View>
         </View>
 
-        {/* Tab selector */}
+        {/* Tab selector — only admins see the "online" tab */}
         <View style={styles.tabRow}>
           <TouchableOpacity
             style={[styles.tab, activeTab === "chat" && styles.tabActive]}
             onPress={() => setActiveTab("chat")}
           >
             <Text style={[styles.tabText, activeTab === "chat" && styles.tabTextActive]}>
-              💬 Más activos en chat
+              💬 Más activos
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "events" && styles.tabActive]}
-            onPress={() => setActiveTab("events")}
-          >
-            <Text style={[styles.tabText, activeTab === "events" && styles.tabTextActive]}>
-              🌐 Conectados ahora
-            </Text>
-          </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "online" && styles.tabActive]}
+              onPress={() => setActiveTab("online")}
+            >
+              <Text style={[styles.tabText, activeTab === "online" && styles.tabTextActive]}>
+                🌐 Conectados ahora
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {isLoading ? (
@@ -147,7 +157,10 @@ export default function LeaderboardScreen() {
                           </View>
                         )}
                       </View>
-                      <Text style={styles.rankCode}>{item.code}</Text>
+                      {/* Only admins see the access code */}
+                      {isAdmin && (
+                        <Text style={styles.rankCode}>{item.code}</Text>
+                      )}
                     </View>
                   </View>
                   <View style={styles.rankRight}>
@@ -161,8 +174,9 @@ export default function LeaderboardScreen() {
             }}
           />
         ) : (
+          /* Admin-only: full online users list */
           <FlatList
-            data={onlineUsers}
+            data={(onlineUsers ?? []).filter((p: any) => p.isOnline)}
             keyExtractor={(item) => item.userId.toString()}
             contentContainerStyle={{ padding: 16, gap: 10 }}
             showsVerticalScrollIndicator={false}
@@ -175,7 +189,7 @@ export default function LeaderboardScreen() {
             }
             ListHeaderComponent={
               <Text style={styles.onlineHeader}>
-                {onlineUsers.length} invitado{onlineUsers.length !== 1 ? "s" : ""} conectado{onlineUsers.length !== 1 ? "s" : ""} ahora
+                {(onlineUsers ?? []).filter((p: any) => p.isOnline).length} invitado(s) conectado(s) ahora
               </Text>
             }
             renderItem={({ item }) => {
@@ -205,6 +219,7 @@ export default function LeaderboardScreen() {
                           </View>
                         )}
                       </View>
+                      {/* Admin always sees the code */}
                       <Text style={styles.rankCode}>{item.userCode}</Text>
                     </View>
                   </View>
@@ -222,15 +237,8 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  container: { flex: 1, backgroundColor: "#0A0A0A" },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -239,11 +247,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#F5E6C8",
-  },
+  headerTitle: { fontSize: 22, fontWeight: "800", color: "#F5E6C8" },
   onlineBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -255,23 +259,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#27AE6044",
   },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#27AE60",
-  },
-  onlineText: {
-    color: "#27AE60",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  tabRow: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
-  },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#27AE60" },
+  onlineText: { color: "#27AE60", fontSize: 12, fontWeight: "700" },
+  tabRow: { flexDirection: "row", paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
   tab: {
     flex: 1,
     backgroundColor: "#1A1A1A",
@@ -281,63 +271,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2A2A2A",
   },
-  tabActive: {
-    backgroundColor: "#C9A84C22",
-    borderColor: "#C9A84C",
-  },
-  tabText: {
-    color: "#8A7A5A",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  tabTextActive: {
-    color: "#C9A84C",
-  },
+  tabActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
+  tabText: { color: "#8A7A5A", fontSize: 12, fontWeight: "600" },
+  tabTextActive: { color: "#C9A84C" },
   myRankCard: {
-    backgroundColor: "#C9A84C11",
+    backgroundColor: "#C9A84C22",
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#C9A84C33",
-    marginBottom: 16,
-    gap: 4,
+    borderColor: "#C9A84C44",
   },
-  myRankLabel: {
-    fontSize: 11,
-    color: "#8A7A5A",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  myRankNumber: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#C9A84C",
-  },
-  myRankMessages: {
-    fontSize: 12,
-    color: "#8A7A5A",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
-    paddingHorizontal: 32,
-  },
-  emptyIcon: {
-    fontSize: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#F5E6C8",
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: "#8A7A5A",
-    textAlign: "center",
-    lineHeight: 20,
-  },
+  myRankLabel: { color: "#C9A84C", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
+  myRankNumber: { color: "#F5E6C8", fontSize: 36, fontWeight: "900", marginVertical: 4 },
+  myRankMessages: { color: "#8A7A5A", fontSize: 12 },
   rankCard: {
     backgroundColor: "#1A1A1A",
     borderRadius: 14,
@@ -348,30 +296,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2A2A2A",
   },
-  rankCardMe: {
-    borderColor: "#C9A84C",
-    backgroundColor: "#C9A84C11",
-  },
-  rankLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
-  },
-  medalText: {
-    fontSize: 24,
-    width: 32,
-    textAlign: "center",
-  },
+  rankCardMe: { borderColor: "#C9A84C", backgroundColor: "#C9A84C11" },
+  rankLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  medalText: { fontSize: 22, width: 30, textAlign: "center" },
   rankNumContainer: {
-    width: 32,
+    width: 30,
     alignItems: "center",
   },
-  rankNum: {
-    fontSize: 13,
-    color: "#8A7A5A",
-    fontWeight: "700",
-  },
+  rankNum: { color: "#8A7A5A", fontSize: 13, fontWeight: "700" },
   avatarCircle: {
     width: 40,
     height: 40,
@@ -380,78 +312,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#C9A84C44",
+    borderColor: "#3A3A3A",
   },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#C9A84C",
-  },
-  rankInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  rankNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  rankName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#F5E6C8",
-  },
-  rankNameMe: {
-    color: "#C9A84C",
-  },
+  avatarText: { color: "#C9A84C", fontSize: 16, fontWeight: "800" },
+  rankInfo: { flex: 1 },
+  rankNameRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  rankName: { color: "#F5E6C8", fontSize: 14, fontWeight: "700" },
+  rankNameMe: { color: "#C9A84C" },
+  rankCode: { color: "#8A7A5A", fontSize: 11, marginTop: 2 },
   adminBadge: {
     backgroundColor: "#C9A84C22",
     borderRadius: 4,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#C9A84C44",
   },
-  adminBadgeText: {
-    color: "#C9A84C",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
+  adminBadgeText: { color: "#C9A84C", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
   meBadge: {
     backgroundColor: "#3498DB22",
     borderRadius: 4,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#3498DB44",
   },
-  meBadgeText: {
-    color: "#3498DB",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  rankCode: {
-    fontSize: 10,
-    color: "#8A7A5A",
-    fontFamily: "monospace",
-  },
-  rankRight: {
-    alignItems: "center",
-  },
-  rankCount: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#8A7A5A",
-  },
-  rankCountLabel: {
-    fontSize: 10,
-    color: "#555",
-  },
-  onlineHeader: {
-    fontSize: 13,
-    color: "#8A7A5A",
-    marginBottom: 8,
-    textAlign: "center",
-  },
+  meBadgeText: { color: "#3498DB", fontSize: 9, fontWeight: "800" },
+  rankRight: { alignItems: "center" },
+  rankCount: { color: "#F5E6C8", fontSize: 20, fontWeight: "900" },
+  rankCountLabel: { color: "#8A7A5A", fontSize: 10 },
+  emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: { color: "#F5E6C8", fontSize: 18, fontWeight: "700" },
+  emptySubtitle: { color: "#8A7A5A", fontSize: 13, textAlign: "center", paddingHorizontal: 20 },
+  onlineHeader: { color: "#8A7A5A", fontSize: 12, fontWeight: "600", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
   onlineCard: {
     backgroundColor: "#1A1A1A",
     borderRadius: 14,
@@ -462,20 +356,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2A2A2A",
   },
-  onlineLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
-  },
-  onlineDotLarge: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#27AE60",
-  },
-  onlineTime: {
-    fontSize: 11,
-    color: "#8A7A5A",
-  },
+  onlineLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  onlineDotLarge: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#27AE60" },
+  onlineTime: { color: "#8A7A5A", fontSize: 11 },
 });

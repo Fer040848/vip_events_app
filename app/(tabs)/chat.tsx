@@ -103,10 +103,18 @@ export default function ChatScreen() {
     return grouped;
   };
 
-  // Online users with auto-refresh
+  const isAdmin = (user as any)?.role === "admin";
+
+  // Online users — full list only for admins
   const { data: onlineUsers, refetch: refetchOnline } = trpc.chat.onlineUsers.useQuery(
     undefined,
-    { enabled: !!user, refetchInterval: 15000 }
+    { enabled: !!user && isAdmin, refetchInterval: 15000 }
+  );
+
+  // Regular users only get a count
+  const { data: onlineCountData } = trpc.chat.onlineCount.useQuery(
+    undefined,
+    { enabled: !!user && !isAdmin, refetchInterval: 15000 }
   );
 
   // Send message mutation
@@ -347,7 +355,9 @@ export default function ChatScreen() {
     );
   };
 
-  const onlineCount = onlineUsers?.length ?? 0;
+  const onlineCount = isAdmin
+    ? (onlineUsers?.length ?? 0)
+    : (onlineCountData?.count ?? 0);
 
   return (
     <ScreenContainer containerClassName="bg-black" edges={["top", "left", "right"]}>
@@ -440,31 +450,40 @@ export default function ChatScreen() {
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Usuarios en línea</Text>
             <Text style={styles.modalSub}>{onlineCount} conectados ahora</Text>
-            {!onlineUsers || onlineUsers.length === 0 ? (
-              <Text style={styles.noOnline}>No hay usuarios conectados en este momento.</Text>
-            ) : (
-              <FlatList
-                data={onlineUsers as OnlineUser[]}
-                keyExtractor={(item) => item.userId.toString()}
-                renderItem={({ item }) => (
-                  <View style={styles.onlineUserRow}>
-                    <View style={[styles.onlineAvatar, item.isAdmin ? styles.onlineAvatarAdmin : null]}>
-                      <Text style={styles.onlineAvatarText}>
-                        {item.userName.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.onlineUserInfo}>
-                      <View style={styles.onlineUserNameRow}>
-                        <Text style={styles.onlineUserName}>{item.userName}</Text>
-                        {item.isAdmin && <Text style={styles.adminBadge}>ADMIN</Text>}
+            {isAdmin ? (
+              // Admins see full list with names and codes
+              !onlineUsers || onlineUsers.length === 0 ? (
+                <Text style={styles.noOnline}>No hay usuarios conectados en este momento.</Text>
+              ) : (
+                <FlatList
+                  data={onlineUsers as OnlineUser[]}
+                  keyExtractor={(item) => item.userId.toString()}
+                  renderItem={({ item }) => (
+                    <View style={styles.onlineUserRow}>
+                      <View style={[styles.onlineAvatar, item.isAdmin ? styles.onlineAvatarAdmin : null]}>
+                        <Text style={styles.onlineAvatarText}>
+                          {item.userName.charAt(0).toUpperCase()}
+                        </Text>
                       </View>
-                      <Text style={styles.onlineUserCode}>{item.userCode}</Text>
+                      <View style={styles.onlineUserInfo}>
+                        <View style={styles.onlineUserNameRow}>
+                          <Text style={styles.onlineUserName}>{item.userName}</Text>
+                          {item.isAdmin && <Text style={styles.adminBadge}>ADMIN</Text>}
+                        </View>
+                        <Text style={styles.onlineUserCode}>{item.userCode}</Text>
+                      </View>
+                      <View style={styles.onlineDotSmall} />
                     </View>
-                    <View style={styles.onlineDotSmall} />
-                  </View>
-                )}
-                style={styles.onlineList}
-              />
+                  )}
+                  style={styles.onlineList}
+                />
+              )
+            ) : (
+              // Regular users only see the count, no names or codes
+              <View style={styles.onlineCountOnly}>
+                <Text style={styles.onlineCountBig}>{onlineCount}</Text>
+                <Text style={styles.onlineCountLabel}>invitados conectados ahora</Text>
+              </View>
             )}
             <TouchableOpacity
               style={styles.closeBtn}
@@ -915,5 +934,20 @@ const styles = StyleSheet.create({
   },
   pickerEmojiText: {
     fontSize: 24,
+  },
+  onlineCountOnly: {
+    alignItems: "center",
+    paddingVertical: 28,
+    gap: 8,
+  },
+  onlineCountBig: {
+    fontSize: 56,
+    fontWeight: "900",
+    color: "#27AE60",
+  },
+  onlineCountLabel: {
+    fontSize: 14,
+    color: "#8A7A5A",
+    textAlign: "center",
   },
 });
