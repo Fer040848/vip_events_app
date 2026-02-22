@@ -206,6 +206,21 @@ export default function AdminNotificationsScreen() {
                     body: "Recuerda completar tu pago para activar tu entrada VIP y acceder al evento.",
                     type: "payment" as const,
                   },
+                  {
+                    title: "⏰ Último aviso de pago",
+                    body: "¡Quedan pocas horas! Completa tu pago de $500 MXN para no perder tu lugar en el evento VIP. Usa el link de MercadoPago en la app.",
+                    type: "payment" as const,
+                  },
+                  {
+                    title: "🎉 ¡Nos vemos esta noche!",
+                    body: "El evento comienza pronto. Asegúrate de tener tu QR listo y llegar 15 minutos antes. ¡Será una noche increíble!",
+                    type: "event_reminder" as const,
+                  },
+                  {
+                    title: "👑 Servicio VIP disponible",
+                    body: "Ya puedes hacer tus pedidos VIP desde la app. Champagne, mesa privada y más te esperan. ¡Disfruta la noche!",
+                    type: "order" as const,
+                  },
                 ].map((t, i) => (
                   <TouchableOpacity
                     key={i}

@@ -95,3 +95,13 @@
 - [x] Contador regresivo al próximo evento en Home
 - [x] Galería de fotos del evento (subir y ver fotos)
 - [x] Estado de pedido VIP en tiempo real (polling)
+
+## Bugs y Mejoras v4
+- [x] BUGFIX: Corregir generación de QR en pantalla Mi QR
+- [x] BUGFIX: Corregir formulario de crear/editar eventos en dashboard admin
+- [x] Panel de gestión de pedidos VIP para admin (ver y cambiar estado)
+- [x] Compartir QR por WhatsApp y guardar en galería
+- [x] Modo oscuro/claro configurable desde el perfil
+- [x] Mejora adicional 1: Tabla de posiciones/Leaderboard de comunidad VIP
+- [x] Mejora adicional 2: Mapa interactivo del evento con navegación (Apple Maps, Google Maps, Waze)
+- [x] Mejora adicional 3: Plantillas de recordatorio de pago automático en panel admin

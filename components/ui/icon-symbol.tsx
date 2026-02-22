@@ -67,6 +67,10 @@ const MAPPING = {
   "bubble.left.and.bubble.right.fill": "chat",
   "message.fill": "chat",
   "chat.bubble.fill": "chat",
+  "bag.fill": "shopping-bag",
+  "list.bullet.clipboard.fill": "assignment",
+  "moon.fill": "dark-mode",
+  "sun.max.fill": "light-mode",
 } as unknown as IconMapping;
 
 /**

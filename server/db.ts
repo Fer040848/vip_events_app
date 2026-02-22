@@ -415,3 +415,9 @@ export async function deleteEventPhoto(photoId: number, userId: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(eventPhotos).where(and(eq(eventPhotos.id, photoId), eq(eventPhotos.userId, userId)));
 }
+
+export async function getAllVipOrders() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(vipOrders).orderBy(desc(vipOrders.createdAt));
+}

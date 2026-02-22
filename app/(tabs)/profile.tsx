@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
+import { useThemeContext } from "@/lib/theme-provider";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -20,6 +21,8 @@ import * as Haptics from "expo-haptics";
 export default function ProfileScreen() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
+  const { colorScheme, setColorScheme } = useThemeContext();
+  const isDark = colorScheme === "dark";
   const [showNameModal, setShowNameModal] = useState(false);
   const [newName, setNewName] = useState("");
   const utils = trpc.useUtils();
@@ -243,6 +246,27 @@ export default function ProfileScreen() {
               <Text style={styles.actionIcon}>👑</Text>
               <Text style={styles.actionText}>Mis pedidos VIP</Text>
               <Text style={styles.actionChevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Theme Toggle */}
+          <View style={styles.themeToggleCard}>
+            <View style={styles.themeToggleLeft}>
+              <Text style={styles.themeToggleIcon}>{isDark ? "🌙" : "☀️"}</Text>
+              <View>
+                <Text style={styles.themeToggleTitle}>{isDark ? "Modo Oscuro" : "Modo Claro"}</Text>
+                <Text style={styles.themeToggleSub}>Cambiar apariencia de la app</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.themeSwitch, isDark && styles.themeSwitchActive]}
+              onPress={() => {
+                setColorScheme(isDark ? "light" : "dark");
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.themeSwitchThumb, isDark && styles.themeSwitchThumbActive]} />
             </TouchableOpacity>
           </View>
 
@@ -551,5 +575,58 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: "#666",
     fontSize: 14,
+  },
+  themeToggleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  themeToggleLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  themeToggleIcon: {
+    fontSize: 24,
+  },
+  themeToggleTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#F5E6C8",
+  },
+  themeToggleSub: {
+    fontSize: 11,
+    color: "#8A7A5A",
+    marginTop: 2,
+  },
+  themeSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#2A2A2A",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1,
+    borderColor: "#3A3A3A",
+  },
+  themeSwitchActive: {
+    backgroundColor: "#C9A84C",
+    borderColor: "#C9A84C",
+  },
+  themeSwitchThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#8A7A5A",
+  },
+  themeSwitchThumbActive: {
+    backgroundColor: "#0A0A0A",
+    transform: [{ translateX: 22 }],
   },
 });

@@ -91,6 +91,7 @@ export default function RootLayout() {
             <Stack.Screen name="login" />
             <Stack.Screen name="event/[id]" />
             <Stack.Screen name="event-gallery/[id]" />
+            <Stack.Screen name="event-map/[id]" />
             <Stack.Screen name="setup-name" />
             <Stack.Screen name="oauth/callback" />
           </Stack>

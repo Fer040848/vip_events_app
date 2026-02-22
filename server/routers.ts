@@ -105,6 +105,10 @@ export const appRouter = router({
       if (ctx.user.role !== "admin") throw new Error("Unauthorized");
       return db.getVipOrdersByEvent(input.eventId);
     }),
+    getAllOrders: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.getAllVipOrders();
+    }),
     create: protectedProcedure.input(z.object({
       eventId: z.number(),
       invitationId: z.number(),
@@ -321,3 +325,4 @@ export const appRouter = router({
   }),
 });
 export type AppRouter = typeof appRouter;
+

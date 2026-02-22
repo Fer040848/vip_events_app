@@ -86,6 +86,13 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="orders"
+        options={{
+          title: "Pedidos",
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="bag.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="chat"
         options={{
           title: "Chat",

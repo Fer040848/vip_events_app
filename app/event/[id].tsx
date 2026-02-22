@@ -230,6 +230,22 @@ export default function EventDetailScreen() {
             <Text style={styles.galleryBtnArrow}>›</Text>
           </TouchableOpacity>
 
+          {/* Map Button */}
+          {event.location && (
+            <TouchableOpacity
+              style={[styles.galleryBtn, { marginTop: 10 }]}
+              onPress={() => router.push(`/event-map/${event.id}` as any)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.galleryBtnIcon}>🗺️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.galleryBtnTitle}>Ver mapa e indicaciones</Text>
+                <Text style={styles.galleryBtnSub}>Cómo llegar al evento</Text>
+              </View>
+              <Text style={styles.galleryBtnArrow}>›</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Guests Info */}
           {event.maxGuests && (
             <View style={styles.guestsInfo}>
