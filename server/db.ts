@@ -3,6 +3,8 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   accessCodes,
   chatMessages,
+  chatReactions,
+  eventPhotos,
   events,
   invitations,
   notifications,
@@ -365,4 +367,51 @@ export async function getPushTokensByUserIds(userIds: number[]): Promise<string[
   const { inArray } = await import("drizzle-orm");
   const result = await db.select({ pushToken: users.pushToken }).from(users).where(inArray(users.id, userIds));
   return result.map((r) => r.pushToken!).filter(Boolean);
+}
+
+// ============================================================
+// CHAT REACTIONS
+// ============================================================
+export async function addReaction(data: { messageId: number; userId: number; userName: string; emoji: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Remove existing reaction from same user on same message (toggle)
+  const existing = await db.select().from(chatReactions)
+    .where(and(eq(chatReactions.messageId, data.messageId), eq(chatReactions.userId, data.userId), eq(chatReactions.emoji, data.emoji)));
+  if (existing.length > 0) {
+    await db.delete(chatReactions).where(eq(chatReactions.id, existing[0].id));
+    return { toggled: false };
+  }
+  await db.insert(chatReactions).values(data);
+  return { toggled: true };
+}
+
+export async function getReactionsByMessages(messageIds: number[]) {
+  const db = await getDb();
+  if (!db) return [];
+  if (messageIds.length === 0) return [];
+  const { inArray } = await import("drizzle-orm");
+  return db.select().from(chatReactions).where(inArray(chatReactions.messageId, messageIds));
+}
+
+// ============================================================
+// EVENT PHOTOS
+// ============================================================
+export async function addEventPhoto(data: { eventId: number; userId: number; userName: string; photoUrl: string; caption?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(eventPhotos).values(data);
+  return result[0].insertId;
+}
+
+export async function getEventPhotos(eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(eventPhotos).where(eq(eventPhotos.eventId, eventId)).orderBy(desc(eventPhotos.createdAt));
+}
+
+export async function deleteEventPhoto(photoId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(eventPhotos).where(and(eq(eventPhotos.id, photoId), eq(eventPhotos.userId, userId)));
 }

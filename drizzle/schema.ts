@@ -172,3 +172,34 @@ export const userPresence = mysqlTable("user_presence", {
 
 export type UserPresence = typeof userPresence.$inferSelect;
 export type InsertUserPresence = typeof userPresence.$inferInsert;
+
+/**
+ * Chat reactions — emoji reactions to messages
+ */
+export const chatReactions = mysqlTable("chat_reactions", {
+  id: int("id").autoincrement().primaryKey(),
+  messageId: int("messageId").notNull(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 100 }).notNull(),
+  emoji: varchar("emoji", { length: 10 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatReaction = typeof chatReactions.$inferSelect;
+export type InsertChatReaction = typeof chatReactions.$inferInsert;
+
+/**
+ * Event photos — photos shared during events
+ */
+export const eventPhotos = mysqlTable("event_photos", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 100 }).notNull(),
+  photoUrl: text("photoUrl").notNull(),
+  caption: text("caption"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EventPhoto = typeof eventPhotos.$inferSelect;
+export type InsertEventPhoto = typeof eventPhotos.$inferInsert;

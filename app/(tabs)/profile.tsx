@@ -1,20 +1,51 @@
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   FlatList,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import * as Haptics from "expo-haptics";
 
 export default function ProfileScreen() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [newName, setNewName] = useState("");
+  const utils = trpc.useUtils();
+
+  const updateName = trpc.users.updateName.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+      await utils.users.me.invalidate();
+      setShowNameModal(false);
+      setNewName("");
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("✅ Nombre actualizado", "Tu nombre ha sido cambiado exitosamente.");
+    },
+    onError: (err) => Alert.alert("Error", err.message),
+  });
+
+  const handleOpenNameModal = () => {
+    setNewName(user?.name ?? "");
+    setShowNameModal(true);
+  };
+
+  const handleSaveName = () => {
+    const trimmed = newName.trim();
+    if (trimmed.length < 2) { Alert.alert("Error", "El nombre debe tener al menos 2 caracteres."); return; }
+    updateName.mutate({ name: trimmed });
+  };
 
   const { data: notifications, refetch: refetchNotifs } = trpc.notifications.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -75,7 +106,45 @@ export default function ProfileScreen() {
               <Text style={styles.vipBadgeText}>👑 MIEMBRO VIP</Text>
             </View>
           </View>
+          <TouchableOpacity style={styles.editNameBtn} onPress={handleOpenNameModal} activeOpacity={0.8}>
+            <Text style={styles.editNameIcon}>✏️</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Change Name Modal */}
+        <Modal visible={showNameModal} transparent animationType="slide" onRequestClose={() => setShowNameModal(false)}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowNameModal(false)}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>Cambiar nombre</Text>
+              <Text style={styles.modalSub}>Este nombre aparece en el chat y la plataforma.</Text>
+              <TextInput
+                style={styles.nameInput}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="Tu nombre..."
+                placeholderTextColor="#555"
+                autoCapitalize="words"
+                autoCorrect={false}
+                autoFocus
+                maxLength={50}
+                returnKeyType="done"
+                onSubmitEditing={handleSaveName}
+              />
+              <TouchableOpacity
+                style={[styles.saveNameBtn, (!newName.trim() || updateName.isPending) && styles.saveNameBtnDisabled]}
+                onPress={handleSaveName}
+                disabled={!newName.trim() || updateName.isPending}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.saveNameBtnText}>{updateName.isPending ? "Guardando..." : "GUARDAR"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowNameModal(false)}>
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -401,5 +470,86 @@ const styles = StyleSheet.create({
     color: "#E74C3C",
     fontSize: 15,
     fontWeight: "700",
+  },
+  editNameBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: "#333",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+  },
+  editNameIcon: {
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#111",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    borderTopWidth: 1,
+    borderColor: "#2a2200",
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#333",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 4,
+  },
+  modalSub: {
+    fontSize: 13,
+    color: "#888",
+    marginBottom: 16,
+  },
+  nameInput: {
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 17,
+    color: "#fff",
+    marginBottom: 16,
+  },
+  saveNameBtn: {
+    backgroundColor: "#C9A84C",
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  saveNameBtnDisabled: {
+    opacity: 0.5,
+  },
+  saveNameBtnText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  cancelBtn: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  cancelBtnText: {
+    color: "#666",
+    fontSize: 14,
   },
 });

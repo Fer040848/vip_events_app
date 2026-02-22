@@ -86,3 +86,12 @@
 - [x] Presencia en tiempo real mejorada (actualizar al entrar/salir del chat)
 - [x] Notificaciones push nativas desde el panel admin
 - [x] Registrar push token al iniciar sesión
+
+## Mejoras v3 (6 nuevas funcionalidades)
+- [x] Cambio de nombre desde pantalla de Perfil
+- [x] Reacciones emoji en mensajes del chat (👍 ❤️ 🎉)
+- [x] Backend: tabla de reacciones y rutas tRPC
+- [x] Notificación automática 1h antes del evento (botón en admin)
+- [x] Contador regresivo al próximo evento en Home
+- [x] Galería de fotos del evento (subir y ver fotos)
+- [x] Estado de pedido VIP en tiempo real (polling)

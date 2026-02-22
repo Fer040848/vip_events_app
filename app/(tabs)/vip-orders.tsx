@@ -65,7 +65,7 @@ export default function VipOrdersScreen() {
   const { data: events } = trpc.events.list.useQuery();
   const { data: myOrders, refetch: refetchOrders } = trpc.vipOrders.myOrders.useQuery(
     undefined,
-    { enabled: !!user }
+    { enabled: !!user, refetchInterval: 10000 } // Poll every 10s for real-time order status
   );
 
   const createOrder = trpc.vipOrders.create.useMutation({
@@ -128,11 +128,11 @@ export default function VipOrdersScreen() {
     });
   };
 
-  const ORDER_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    pending: { label: "Pendiente", color: "#F39C12" },
-    confirmed: { label: "Confirmado", color: "#27AE60" },
-    delivered: { label: "Entregado", color: "#8A7A5A" },
-    cancelled: { label: "Cancelado", color: "#C0392B" },
+  const ORDER_STATUS_LABELS: Record<string, { label: string; color: string; icon: string; bg: string }> = {
+    pending: { label: "En preparación...", color: "#F39C12", icon: "⏳", bg: "#F39C1222" },
+    confirmed: { label: "En camino →", color: "#3498DB", icon: "🚀", bg: "#3498DB22" },
+    delivered: { label: "Entregado ✓", color: "#27AE60", icon: "✅", bg: "#27AE6022" },
+    cancelled: { label: "Cancelado", color: "#C0392B", icon: "❌", bg: "#C0392B22" },
   };
 
   if (!user) {
@@ -269,9 +269,10 @@ export default function VipOrdersScreen() {
                         minute: "2-digit",
                       })}
                     </Text>
-                    <Text style={[styles.orderCardStatus, { color: statusInfo.color }]}>
-                      {statusInfo.label}
-                    </Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg, borderColor: statusInfo.color + "55" }]}>
+                      <Text style={styles.statusBadgeIcon}>{statusInfo.icon}</Text>
+                      <Text style={[styles.statusBadgeText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+                    </View>
                   </View>
                   <View style={styles.orderCardItems}>
                     {items.map((itemId) => {
@@ -520,4 +521,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  statusBadgeIcon: { fontSize: 13 },
+  statusBadgeText: { fontSize: 12, fontWeight: "700" },
 });

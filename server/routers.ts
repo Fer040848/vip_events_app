@@ -282,6 +282,42 @@ export const appRouter = router({
     // Get online users
     onlineUsers: protectedProcedure.query(() => db.getOnlineUsers()),
   }),
+  reactions: router({
+    add: protectedProcedure.input(z.object({
+      messageId: z.number(),
+      emoji: z.string().min(1).max(10),
+    })).mutation(({ ctx, input }) =>
+      db.addReaction({
+        messageId: input.messageId,
+        userId: ctx.user.id,
+        userName: ctx.user.name ?? "Invitado",
+        emoji: input.emoji,
+      })
+    ),
+    byMessages: protectedProcedure.input(z.object({ messageIds: z.array(z.number()) })).query(({ input }) =>
+      db.getReactionsByMessages(input.messageIds)
+    ),
+  }),
+  photos: router({
+    list: protectedProcedure.input(z.object({ eventId: z.number() })).query(({ input }) =>
+      db.getEventPhotos(input.eventId)
+    ),
+    add: protectedProcedure.input(z.object({
+      eventId: z.number(),
+      photoUrl: z.string().url(),
+      caption: z.string().optional(),
+    })).mutation(({ ctx, input }) =>
+      db.addEventPhoto({
+        eventId: input.eventId,
+        userId: ctx.user.id,
+        userName: ctx.user.name ?? "Invitado",
+        photoUrl: input.photoUrl,
+        caption: input.caption,
+      })
+    ),
+    delete: protectedProcedure.input(z.object({ photoId: z.number() })).mutation(({ ctx, input }) =>
+      db.deleteEventPhoto(input.photoId, ctx.user.id)
+    ),
+  }),
 });
-
 export type AppRouter = typeof appRouter;

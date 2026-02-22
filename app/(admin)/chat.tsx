@@ -50,6 +50,9 @@ type OnlineUser = {
 };
 
 const POLL_INTERVAL = 5000; // 5 seconds
+const REACTION_EMOJIS = ["👍", "❤️", "🎉", "🔥", "😂", "👑"];
+
+type Reaction = { id: number; messageId: number; userId: number; userName: string; emoji: string };
 
 export default function ChatScreen() {
   const { user } = useAuth();
@@ -58,6 +61,8 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [lastId, setLastId] = useState<number | undefined>(undefined);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -65,6 +70,38 @@ export default function ChatScreen() {
 
   // tRPC utils for direct queries
   const utils = trpc.useUtils();
+
+  // Reactions mutation
+  const addReactionMutation = trpc.reactions.add.useMutation({
+    onSuccess: () => loadReactions(),
+  });
+
+  const loadReactions = useCallback(async () => {
+    if (messages.length === 0) return;
+    try {
+      const ids = messages.map((m) => m.id);
+      const data = await utils.reactions.byMessages.fetch({ messageIds: ids });
+      setReactions(data as Reaction[]);
+    } catch (e) { /* ignore */ }
+  }, [messages, utils]);
+
+  const handleReaction = (msgId: number, emoji: string) => {
+    if (!user) return;
+    setReactionPickerMsgId(null);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addReactionMutation.mutate({ messageId: msgId, emoji });
+  };
+
+  const getReactionsForMessage = (msgId: number) => {
+    const msgReactions = reactions.filter((r) => r.messageId === msgId);
+    const grouped: Record<string, { count: number; hasMe: boolean }> = {};
+    for (const r of msgReactions) {
+      if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, hasMe: false };
+      grouped[r.emoji].count++;
+      if (r.userId === user?.id) grouped[r.emoji].hasMe = true;
+    }
+    return grouped;
+  };
 
   // Online users with auto-refresh
   const { data: onlineUsers, refetch: refetchOnline } = trpc.chat.onlineUsers.useQuery(
@@ -199,8 +236,14 @@ export default function ChatScreen() {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: false });
       }, 200);
+      loadReactions();
     }
   }, [isLoadingInitial]);
+
+  // Reload reactions when messages update
+  useEffect(() => {
+    if (messages.length > 0) loadReactions();
+  }, [messages.length]);
 
   const handleSend = async () => {
     const text = message.trim();
@@ -246,6 +289,8 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isMine = isMyMessage(item);
+    const msgReactions = getReactionsForMessage(item.id);
+    const hasReactions = Object.keys(msgReactions).length > 0;
     return (
       <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
         {!isMine && (
@@ -255,21 +300,41 @@ export default function ChatScreen() {
             </Text>
           </View>
         )}
-        <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
-          {!isMine && (
-            <View style={styles.bubbleHeader}>
-              <Text style={[styles.bubbleName, item.isAdmin ? styles.bubbleNameAdmin : null]}>
-                {item.userName}
-              </Text>
-              {item.isAdmin && <Text style={styles.adminBadge}>ADMIN</Text>}
+        <View style={{ maxWidth: "75%" }}>
+          <TouchableOpacity
+            style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}
+            onLongPress={() => setReactionPickerMsgId(item.id)}
+            activeOpacity={0.9}
+          >
+            {!isMine && (
+              <View style={styles.bubbleHeader}>
+                <Text style={[styles.bubbleName, item.isAdmin ? styles.bubbleNameAdmin : null]}>
+                  {item.userName}
+                </Text>
+                {item.isAdmin && <Text style={styles.adminBadge}>ADMIN</Text>}
+              </View>
+            )}
+            <Text style={[styles.bubbleText, isMine ? styles.bubbleTextMine : null]}>
+              {item.message}
+            </Text>
+            <Text style={[styles.bubbleTime, isMine ? styles.bubbleTimeMine : null]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </TouchableOpacity>
+          {hasReactions && (
+            <View style={[styles.reactionsRow, isMine ? styles.reactionsRowRight : styles.reactionsRowLeft]}>
+              {Object.entries(msgReactions).map(([emoji, data]) => (
+                <TouchableOpacity
+                  key={emoji}
+                  style={[styles.reactionChip, data.hasMe && styles.reactionChipMine]}
+                  onPress={() => handleReaction(item.id, emoji)}
+                >
+                  <Text style={styles.reactionEmoji}>{emoji}</Text>
+                  <Text style={styles.reactionCount}>{data.count}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           )}
-          <Text style={[styles.bubbleText, isMine ? styles.bubbleTextMine : null]}>
-            {item.message}
-          </Text>
-          <Text style={[styles.bubbleTime, isMine ? styles.bubbleTimeMine : null]}>
-            {formatTime(item.createdAt)}
-          </Text>
         </View>
         {isMine && (
           <View style={[styles.avatar, styles.avatarMine]}>
@@ -407,6 +472,35 @@ export default function ChatScreen() {
             >
               <Text style={styles.closeBtnText}>Cerrar</Text>
             </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Reaction Picker Modal */}
+      <Modal
+        visible={reactionPickerMsgId !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReactionPickerMsgId(null)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setReactionPickerMsgId(null)}
+        >
+          <View style={styles.pickerBox}>
+            <Text style={styles.pickerTitle}>REACCIONAR</Text>
+            <View style={styles.pickerEmojis}>
+              {REACTION_EMOJIS.map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  style={styles.pickerEmoji}
+                  onPress={() => reactionPickerMsgId !== null && handleReaction(reactionPickerMsgId, emoji)}
+                >
+                  <Text style={styles.pickerEmojiText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -748,5 +842,78 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+  },
+  reactionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  reactionsRowLeft: {
+    justifyContent: "flex-start",
+    paddingLeft: 4,
+  },
+  reactionsRowRight: {
+    justifyContent: "flex-end",
+    paddingRight: 4,
+  },
+  reactionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1e1e1e",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#333",
+    gap: 3,
+  },
+  reactionChipMine: {
+    backgroundColor: "#2a2200",
+    borderColor: "#C9A84C",
+  },
+  reactionEmoji: {
+    fontSize: 14,
+  },
+  reactionCount: {
+    fontSize: 12,
+    color: "#aaa",
+    fontWeight: "600",
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pickerBox: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  pickerTitle: {
+    color: "#888",
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 12,
+    letterSpacing: 1,
+  },
+  pickerEmojis: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  pickerEmoji: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#222",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerEmojiText: {
+    fontSize: 24,
   },
 });

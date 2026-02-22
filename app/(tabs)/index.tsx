@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +14,32 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
+
+function useCountdown(targetDate: Date | null) {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!targetDate) return;
+    const calc = () => {
+      const diff = targetDate.getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true });
+        return;
+      }
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeLeft({ days, hours, minutes, seconds, expired: false });
+    };
+    calc();
+    timerRef.current = setInterval(calc, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [targetDate]);
+
+  return timeLeft;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -37,6 +63,10 @@ export default function HomeScreen() {
   const nextEvent = events?.[0];
   const recentNotifications = notifications?.slice(0, 3) ?? [];
   const paidInvitations = myInvitations?.filter((i) => i.status === "paid" || i.status === "checked_in") ?? [];
+
+  // Countdown to next event
+  const eventDate = nextEvent?.date ? new Date(nextEvent.date) : null;
+  const countdown = useCountdown(eventDate);
 
   return (
     <ScreenContainer containerClassName="bg-background">
@@ -98,6 +128,28 @@ export default function HomeScreen() {
                   month: "long",
                 })}
               </Text>
+              {/* Countdown */}
+              {!countdown.expired && (
+                <View style={styles.countdownRow}>
+                  {[
+                    { val: countdown.days, label: "DÍAS" },
+                    { val: countdown.hours, label: "HRS" },
+                    { val: countdown.minutes, label: "MIN" },
+                    { val: countdown.seconds, label: "SEG" },
+                  ].map(({ val, label }) => (
+                    <View key={label} style={styles.countdownBlock}>
+                      <Text style={styles.countdownNum}>{String(val).padStart(2, "0")}</Text>
+                      <Text style={styles.countdownLabel}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {countdown.expired && (
+                <View style={styles.eventLiveRow}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>EN VIVO AHORA</Text>
+                </View>
+              )}
               <View style={styles.bannerFooter}>
                 <Text style={styles.bannerPrice}>${nextEvent.price} MXN</Text>
                 <Text style={styles.bannerLocation}>{nextEvent.location ?? "Lugar por confirmar"}</Text>
@@ -487,5 +539,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8A7A5A",
     lineHeight: 17,
+  },
+  countdownRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginVertical: 10,
+  },
+  countdownBlock: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 48,
+    borderWidth: 1,
+    borderColor: "rgba(201,168,76,0.4)",
+  },
+  countdownNum: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#C9A84C",
+    fontVariant: ["tabular-nums"],
+  },
+  countdownLabel: {
+    fontSize: 9,
+    color: "#aaa",
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginTop: 1,
+  },
+  eventLiveRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginVertical: 8,
+  },
+  liveDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#22C55E",
+  },
+  liveText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#22C55E",
+    letterSpacing: 2,
   },
 });

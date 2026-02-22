@@ -87,6 +87,10 @@ export default function EventDetailScreen() {
     Linking.openURL(url);
   };
 
+  const handleGallery = () => {
+    router.push(`/event-gallery/${id}` as any);
+  };
+
   if (isLoading) {
     return (
       <ScreenContainer containerClassName="bg-background">
@@ -215,6 +219,16 @@ export default function EventDetailScreen() {
               ))}
             </View>
           </View>
+
+          {/* Gallery Button */}
+          <TouchableOpacity style={styles.galleryBtn} onPress={handleGallery} activeOpacity={0.8}>
+            <Text style={styles.galleryBtnIcon}>📸</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.galleryBtnTitle}>Galería del evento</Text>
+              <Text style={styles.galleryBtnSub}>Ver y compartir fotos del evento</Text>
+            </View>
+            <Text style={styles.galleryBtnArrow}>›</Text>
+          </TouchableOpacity>
 
           {/* Guests Info */}
           {event.maxGuests && (
@@ -497,4 +511,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
+  galleryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  galleryBtnIcon: { fontSize: 24 },
+  galleryBtnTitle: { fontSize: 15, fontWeight: "700", color: "#F5E6C8", marginBottom: 2 },
+  galleryBtnSub: { fontSize: 12, color: "#8A7A5A" },
+  galleryBtnArrow: { fontSize: 22, color: "#C9A84C", fontWeight: "700" },
 });
