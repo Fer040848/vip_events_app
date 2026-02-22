@@ -9,9 +9,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import MapView, { Marker } from "react-native-maps";
 
 export default function EventMapScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,9 +23,8 @@ export default function EventMapScreen() {
   const handleOpenMaps = () => {
     if (!event?.location) return;
     const query = encodeURIComponent(event.location);
-    const url = Platform.OS === "ios"
-      ? `maps:?q=${query}`
-      : `geo:0,0?q=${query}`;
+    const url =
+      Platform.OS === "ios" ? `maps:?q=${query}` : `geo:0,0?q=${query}`;
     Linking.openURL(url).catch(() => {
       Linking.openURL(`https://maps.google.com/?q=${query}`);
     });
@@ -49,7 +48,8 @@ export default function EventMapScreen() {
     return (
       <ScreenContainer containerClassName="bg-background">
         <View style={styles.centered}>
-          <ActivityIndicator color="#C9A84C" />
+          <ActivityIndicator color="#C9A84C" size="large" />
+          <Text style={styles.loadingText}>Cargando mapa...</Text>
         </View>
       </ScreenContainer>
     );
@@ -68,61 +68,71 @@ export default function EventMapScreen() {
     );
   }
 
-  // Try to parse lat/lng if available
-  const lat = event.locationLat ? parseFloat(event.locationLat as string) : null;
-  const lng = event.locationLng ? parseFloat(event.locationLng as string) : null;
-  const hasCoords = lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng);
+  // Build static map image URL (no API key needed for basic embed)
+  const locationQuery = event.location
+    ? encodeURIComponent(event.location)
+    : null;
+  const staticMapUrl = locationQuery
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${locationQuery}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${locationQuery}&key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY`
+    : null;
 
   return (
-    <ScreenContainer containerClassName="bg-background" edges={["top", "left", "right"]}>
+    <ScreenContainer
+      containerClassName="bg-background"
+      edges={["top", "left", "right"]}
+    >
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backBtnText}>← Regresar</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{event.title}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {event.title}
+          </Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Map */}
-          {hasCoords ? (
-            <View style={styles.mapContainer}>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: lat!,
-                  longitude: lng!,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-                scrollEnabled={false}
-                zoomEnabled={false}
-              >
-                <Marker
-                  coordinate={{ latitude: lat!, longitude: lng! }}
-                  title={event.title}
-                  description={event.location ?? ""}
-                  pinColor="#C9A84C"
-                />
-              </MapView>
+          {/* Map Placeholder — opens Google Maps on tap */}
+          <TouchableOpacity
+            style={styles.mapContainer}
+            onPress={handleOpenGoogleMaps}
+            activeOpacity={0.85}
+          >
+            <View style={styles.mapPlaceholder}>
+              <View style={styles.mapPinContainer}>
+                <Text style={styles.mapPinEmoji}>📍</Text>
+                <View style={styles.mapPinShadow} />
+              </View>
+              <View style={styles.mapGrid}>
+                {/* Decorative grid lines to simulate a map */}
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <View key={`h${i}`} style={[styles.gridLineH, { top: `${i * 25}%` as any }]} />
+                ))}
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <View key={`v${i}`} style={[styles.gridLineV, { left: `${i * 25}%` as any }]} />
+                ))}
+              </View>
+              <View style={styles.mapOverlay}>
+                <Text style={styles.mapOverlayText}>🗺️ Toca para abrir en Google Maps</Text>
+              </View>
             </View>
-          ) : (
-            <View style={styles.noMapContainer}>
-              <Text style={styles.noMapIcon}>🗺️</Text>
-              <Text style={styles.noMapText}>Mapa no disponible</Text>
-              <Text style={styles.noMapSub}>Usa los botones de abajo para navegar</Text>
-            </View>
-          )}
+          </TouchableOpacity>
 
           {/* Location Info */}
           <View style={styles.locationCard}>
             <Text style={styles.locationLabel}>📍 Ubicación del evento</Text>
-            <Text style={styles.locationText}>{event.location ?? "Por confirmar"}</Text>
+            <Text style={styles.locationText}>
+              {event.location ?? "Por confirmar"}
+            </Text>
             {event.locationInstructions && (
               <View style={styles.instructionsBox}>
-                <Text style={styles.instructionsLabel}>🗺️ Indicaciones de llegada</Text>
-                <Text style={styles.instructionsText}>{event.locationInstructions}</Text>
+                <Text style={styles.instructionsLabel}>
+                  🗺️ Indicaciones de llegada
+                </Text>
+                <Text style={styles.instructionsText}>
+                  {event.locationInstructions}
+                </Text>
               </View>
             )}
           </View>
@@ -135,8 +145,12 @@ export default function EventMapScreen() {
                 <Text style={styles.eventInfoLabel}>Fecha y hora</Text>
                 <Text style={styles.eventInfoValue}>
                   {new Date(event.date).toLocaleDateString("es-MX", {
-                    weekday: "long", day: "numeric", month: "long",
-                    year: "numeric", hour: "2-digit", minute: "2-digit",
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </Text>
               </View>
@@ -146,7 +160,9 @@ export default function EventMapScreen() {
               <Text style={styles.eventInfoIcon}>🎉</Text>
               <View>
                 <Text style={styles.eventInfoLabel}>Tipo de evento</Text>
-                <Text style={styles.eventInfoValue}>Barra libre · Evento VIP exclusivo</Text>
+                <Text style={styles.eventInfoValue}>
+                  Barra libre · Evento VIP exclusivo
+                </Text>
               </View>
             </View>
           </View>
@@ -156,15 +172,24 @@ export default function EventMapScreen() {
             <View style={styles.navSection}>
               <Text style={styles.navTitle}>Abrir con...</Text>
               <View style={styles.navButtons}>
-                <TouchableOpacity style={[styles.navBtn, styles.mapsBtn]} onPress={handleOpenMaps}>
+                <TouchableOpacity
+                  style={[styles.navBtn, styles.mapsBtn]}
+                  onPress={handleOpenMaps}
+                >
                   <Text style={styles.navBtnIcon}>🍎</Text>
                   <Text style={styles.navBtnText}>Apple Maps</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.navBtn, styles.googleBtn]} onPress={handleOpenGoogleMaps}>
+                <TouchableOpacity
+                  style={[styles.navBtn, styles.googleBtn]}
+                  onPress={handleOpenGoogleMaps}
+                >
                   <Text style={styles.navBtnIcon}>🗺️</Text>
                   <Text style={styles.navBtnText}>Google Maps</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.navBtn, styles.wazeBtn]} onPress={handleOpenWaze}>
+                <TouchableOpacity
+                  style={[styles.navBtn, styles.wazeBtn]}
+                  onPress={handleOpenWaze}
+                >
                   <Text style={styles.navBtnIcon}>🚗</Text>
                   <Text style={styles.navBtnText}>Waze</Text>
                 </TouchableOpacity>
@@ -189,6 +214,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 16,
+  },
+  loadingText: {
+    color: "#8A7A5A",
+    fontSize: 14,
   },
   errorText: {
     color: "#F5E6C8",
@@ -225,35 +254,66 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: "hidden",
-    height: 220,
+    height: 200,
     borderWidth: 1,
     borderColor: "#C9A84C33",
   },
-  map: {
+  mapPlaceholder: {
     flex: 1,
-  },
-  noMapContainer: {
-    marginHorizontal: 16,
-    height: 180,
     backgroundColor: "#1A1A1A",
-    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
+    position: "relative",
   },
-  noMapIcon: {
+  mapGrid: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  gridLineH: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: "#2A2A2A",
+  },
+  gridLineV: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: "#2A2A2A",
+  },
+  mapPinContainer: {
+    alignItems: "center",
+    zIndex: 2,
+  },
+  mapPinEmoji: {
     fontSize: 48,
   },
-  noMapText: {
-    color: "#F5E6C8",
-    fontSize: 16,
-    fontWeight: "700",
+  mapPinShadow: {
+    width: 20,
+    height: 6,
+    backgroundColor: "#00000066",
+    borderRadius: 10,
+    marginTop: -4,
   },
-  noMapSub: {
-    color: "#8A7A5A",
+  mapOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#0A0A0ACC",
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  mapOverlayText: {
+    color: "#C9A84C",
     fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   locationCard: {
     marginHorizontal: 16,
