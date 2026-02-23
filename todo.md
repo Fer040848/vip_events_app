@@ -129,3 +129,8 @@
 - [x] Instalar expo-camera v16.0.18 (reemplazo oficial recomendado por Expo)
 - [x] Agregar plugin expo-camera al app.config.ts con permisos de cámara
 - [x] Verificar que no hay más dependencias incompatibles con Kotlin 2.0.21
+
+## Bug Fix v8 - expo-camera MLKitBarcodeAnalyzer Kotlin 2.0 incompatibility
+- [x] Parchear MLKitBarcodeAnalyzer.kt: cambiar emptyList() por mutableListOf() (fix Kotlin 2.0.21)
+- [x] Crear archivo patches/expo-camera+16.0.18.patch para persistencia del parche
+- [x] Agregar script postinstall: patch-package en package.json
