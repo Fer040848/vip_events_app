@@ -28,10 +28,10 @@ const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
   // App branding - update these values directly (do not use env vars)
-  appName: "VIP Events",
-  appSlug: "vip_events_app",
+  appName: "AfterRoommx",
+  appSlug: "afterroommx",
   // S3 URL of the app logo
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663241158968/elfGxLZLarSBCIYU.png",
+  logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663241158968/Po6GJtyBQyzCaFsPxTxF6w/icon-KgZvHJErS7h6rH6UMuTyCA.webp",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -85,14 +85,6 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
-    [
-      "expo-camera",
-      {
-        cameraPermission: "Allow $(PRODUCT_NAME) to access your camera to scan QR codes.",
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
-        recordAudioAndroid: false,
-      },
-    ],
     [
       "expo-audio",
       {
