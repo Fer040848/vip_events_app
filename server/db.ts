@@ -248,7 +248,7 @@ export async function seedAccessCodes() {
   for (let i = 1; i <= 50; i++) {
     const num = String(i).padStart(3, "0");
     const code = `tlc${num}`;
-    const isAdmin = i <= 3;
+    const isAdmin = i <= 5; // tlc001 a tlc005 son admins
     codes.push({
       code,
       role: isAdmin ? "admin" : "user",

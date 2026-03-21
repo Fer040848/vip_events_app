@@ -24,7 +24,6 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
     { label: 'Eventos', icon: 'calendar', route: '/(tabs)/events' },
     { label: 'Mi QR', icon: 'qrcode', route: '/(tabs)/my-qr' },
     { label: 'Productos VIP', icon: 'crown.fill', route: '/(tabs)/vip-orders' },
-    { label: 'Comunidad', icon: 'star.fill', route: '/(tabs)/leaderboard' },
     { label: 'Chat', icon: 'bubble.left.and.bubble.right.fill', route: '/(tabs)/chat' },
     { label: 'Perfil', icon: 'person.fill', route: '/(tabs)/profile' },
   ];
@@ -34,11 +33,8 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
     { label: 'Eventos', icon: 'calendar', route: '/(admin)/events', isAdmin: true },
     { label: 'Invitados', icon: 'person.2.fill', route: '/(admin)/guests', isAdmin: true },
     { label: 'Códigos', icon: 'key.fill', route: '/(admin)/access-codes', isAdmin: true },
-    { label: 'Generar Códigos', icon: 'plus.circle.fill', route: '/(admin)/generate-codes', isAdmin: true },
     { label: 'Pagos', icon: 'creditcard.fill', route: '/(admin)/payments', isAdmin: true },
     { label: 'Productos VIP', icon: 'crown.fill', route: '/(admin)/vip-products', isAdmin: true },
-    { label: 'Notificaciones', icon: 'bell.fill', route: '/(admin)/notifications', isAdmin: true },
-    { label: 'Pedidos', icon: 'bag.fill', route: '/(admin)/orders', isAdmin: true },
     { label: 'Chat', icon: 'bubble.left.and.bubble.right.fill', route: '/(admin)/chat', isAdmin: true },
   ];
 
