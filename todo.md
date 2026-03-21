@@ -134,3 +134,55 @@
 - [x] Parchear MLKitBarcodeAnalyzer.kt: cambiar emptyList() por mutableListOf() (fix Kotlin 2.0.21)
 - [x] Crear archivo patches/expo-camera+16.0.18.patch para persistencia del parche
 - [x] Agregar script postinstall: patch-package en package.json
+
+
+## Integración Firebase Authentication v9
+- [ ] Conectar pantalla de login a Firebase Auth (email/contraseña)
+- [ ] Quitar ejemplo "tlc001" del campo de código
+- [ ] Implementar sistema de códigos admin (primeros códigos = admin)
+- [ ] Crear códigos automáticamente en Firestore al generarlos
+- [ ] Diferenciar roles: admin vs usuario regular
+- [ ] Admin puede crear nuevos códigos de acceso
+- [ ] Admin puede compartir códigos generados
+- [ ] Persistencia de sesión con Firebase
+
+## Gestión de Pagos v9
+- [ ] Admin puede cargar enlace de pago
+- [ ] Enlace se actualiza automáticamente para todos los usuarios
+- [ ] Usuarios pueden compartir foto de transferencia como comprobante
+- [ ] Solo admin puede ver fotos de transferencia
+- [ ] Admin puede marcar si usuario pagó o no
+- [ ] Admin puede ver estado de pago de cada invitado
+
+## Gestión de Eventos v9
+- [ ] Admin puede crear eventos (ya existe)
+- [ ] Admin puede editar eventos (ya existe)
+- [ ] Admin puede borrar eventos (ya existe)
+- [ ] Los eventos aparecen en la lista de usuarios (ya existe)
+
+## Gestión de Invitados v9
+- [ ] Admin puede ver lista completa de invitados (ya existe)
+- [ ] Admin puede ver estado de pago de cada invitado (ya existe)
+- [ ] Admin puede marcar pago manual
+- [ ] Admin puede ver foto de comprobante de pago
+
+## Productos VIP v9
+- [ ] Admin puede crear productos VIP (editable)
+- [ ] Admin puede editar productos VIP (solo visible para admin)
+- [ ] Admin puede borrar productos VIP
+- [ ] Usuarios pueden seleccionar productos VIP que desean
+- [ ] Admin gestiona las solicitudes de productos VIP desde panel
+- [ ] Campos editables para admin: nombre, descripción, precio
+
+## Interfaz de Usuario v9
+- [ ] Pantalla de login sin ejemplo de código
+- [ ] Campo de código limpio sin placeholder "tlc001"
+- [ ] Sección de carga de comprobante de pago en invitaciones
+- [ ] Panel de gestión de pagos en admin
+- [ ] Formulario editable de productos VIP para admin
+
+## Base de Datos Firestore v9
+- [ ] Colección: payment_links (url, created_by, created_at)
+- [ ] Documento: invitations con campo payment_proof_url
+- [ ] Documento: vip_products con campos editables para admin
+- [ ] Documento: access_codes con campo role (admin/user)

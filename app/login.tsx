@@ -124,7 +124,7 @@ export default function LoginScreen() {
                   setCode(text);
                   setError(null);
                 }}
-                placeholder="Ej: tlc001"
+                placeholder=""
                 placeholderTextColor="#555"
                 autoCapitalize="none"
                 autoCorrect={false}
