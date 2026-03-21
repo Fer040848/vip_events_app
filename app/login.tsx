@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import * as Auth from "@/lib/_core/auth";
@@ -114,9 +115,11 @@ export default function LoginScreen() {
         >
           {/* Logo / Header */}
           <View style={styles.header}>
-            <View style={styles.crownContainer}>
-              <Text style={styles.crown}>♛</Text>
-            </View>
+            <Image
+              source={require("@/assets/images/icon.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>After Room</Text>
             <Text style={styles.subtitle}>Plataforma Exclusiva</Text>
           </View>
@@ -206,6 +209,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 36,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 16,
   },
   crownContainer: {
     width: 80,
