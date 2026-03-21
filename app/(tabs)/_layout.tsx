@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Platform } from 'react-native';
+import { View, Platform, TouchableOpacity, StyleSheet } from 'react-native';
 import { GestureHandlerRootView, DrawerLayoutAndroid } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarDrawer } from '@/components/sidebar-drawer';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 const DRAWER_WIDTH = 280;
 
@@ -22,6 +23,15 @@ export default function TabLayout() {
 
   const renderDrawer = () => (
     <SidebarDrawer isAdmin={isAdmin} onClose={() => drawerRef.current?.closeDrawer()} />
+  );
+
+  const MenuButton = () => (
+    <TouchableOpacity
+      style={styles.menuButton}
+      onPress={() => drawerRef.current?.openDrawer()}
+    >
+      <IconSymbol name="line.3.horizontal" size={24} color="#C9A84C" />
+    </TouchableOpacity>
   );
 
   if (Platform.OS === 'web') {
@@ -45,8 +55,31 @@ export default function TabLayout() {
         drawerPosition="left"
         renderNavigationView={renderDrawer}
       >
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack
+          screenOptions={{
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#0A0A0A',
+            },
+            headerTintColor: '#C9A84C',
+            headerTitleStyle: {
+              fontWeight: '700',
+              fontSize: 18,
+            },
+            headerLeft: () => <MenuButton />,
+            headerTitle: 'After Room',
+          }}
+        />
       </DrawerLayoutAndroid>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  menuButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

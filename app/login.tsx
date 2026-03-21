@@ -54,13 +54,14 @@ export default function LoginScreen() {
         await Auth.setSessionToken(data.app_session_id);
       }
 
-      // Store user info
+      // Store user info with role
       const userInfo: Auth.User = {
         id: data.user.id,
         openId: data.user.openId,
         name: data.user.name,
         email: data.user.email,
         loginMethod: data.user.loginMethod,
+        role: data.role,
         lastSignedIn: new Date(data.user.lastSignedIn),
       };
       await Auth.setUserInfo(userInfo);
