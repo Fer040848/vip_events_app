@@ -58,6 +58,24 @@ export function useAccessCodes() {
     [createCodeMutation, refetchCodes]
   );
 
+  // Delete code
+  const deleteCodeMutation = trpc.accessCodes.delete.useMutation();
+  
+  const deleteCode = useCallback(
+    async (codeId: number) => {
+      setError(null);
+      try {
+        await deleteCodeMutation.mutateAsync({ id: codeId });
+        await refetchCodes();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Error al eliminar código";
+        setError(message);
+        throw err;
+      }
+    },
+    [deleteCodeMutation, refetchCodes]
+  );
+
   // Deactivate code (stub for now)
   const deactivateCode = useCallback(async (_codeId: number) => {
     setError("Función no implementada");
@@ -65,10 +83,11 @@ export function useAccessCodes() {
 
   return {
     codes: codes as AccessCode[],
-    loading: loading || isQueryLoading || createCodeMutation.isPending,
-    error: error || createCodeMutation.error?.message,
+    loading: loading || isQueryLoading || createCodeMutation.isPending || deleteCodeMutation.isPending,
+    error: error || createCodeMutation.error?.message || deleteCodeMutation.error?.message,
     fetchAllCodes,
     createCode,
+    deleteCode,
     deactivateCode,
   };
 }

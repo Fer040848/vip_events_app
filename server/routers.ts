@@ -177,6 +177,13 @@ export const appRouter = router({
       if (ctx.user.role !== "admin") throw new Error("Unauthorized");
       return db.getAllAccessCodes();
     }),
+    // Delete access code (admin only)
+    delete: protectedProcedure.input(z.object({
+      id: z.number(),
+    })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.deleteAccessCode(input.id);
+    }),
     // Validate and login with code
     login: publicProcedure.input(z.object({ code: z.string() })).mutation(async ({ input }) => {
       await db.seedAccessCodes();

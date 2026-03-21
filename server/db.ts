@@ -290,6 +290,12 @@ export async function createAccessCode(code: string, role: "admin" | "user", dis
   return result[0].insertId;
 }
 
+export async function deleteAccessCode(codeId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(accessCodes).where(eq(accessCodes.id, codeId));
+}
+
 export async function getAllAccessCodes() {
   const db = await getDb();
   if (!db) return [];

@@ -20,7 +20,7 @@ import * as Haptics from "expo-haptics";
 
 export default function AccessCodesScreen() {
   const { user } = useAuth();
-  const { codes, loading, error, fetchAllCodes, createCode, deactivateCode } =
+  const { codes, loading, error, fetchAllCodes, createCode, deleteCode, deactivateCode } =
     useAccessCodes();
 
   // Individual code creation
@@ -171,6 +171,29 @@ export default function AccessCodesScreen() {
     );
   };
 
+  const handleDeleteCode = (codeId: number, code: string) => {
+    Alert.alert(
+      "Eliminar código",
+      `¿Estás seguro de que deseas eliminar ${code}? Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteCode(codeId);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert("Éxito", "Código eliminado correctamente");
+            } catch (err) {
+              Alert.alert("Error", "No se pudo eliminar el código");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderCodeItem = ({ item }: { item: any }) => (
     <View style={styles.codeCard}>
       <View style={styles.codeHeader}>
@@ -207,6 +230,13 @@ export default function AccessCodesScreen() {
             <Text style={styles.actionBtnText}>🚫 Desactivar</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnDelete]}
+          onPress={() => handleDeleteCode(item.id, item.code)}
+        >
+          <Text style={styles.actionBtnText}>🗑️ Eliminar</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -642,6 +672,9 @@ const styles = StyleSheet.create({
   },
   actionBtnDanger: {
     backgroundColor: "#3a2a2a",
+  },
+  actionBtnDelete: {
+    backgroundColor: "#4a2a2a",
   },
   actionBtnText: {
     fontSize: 12,
