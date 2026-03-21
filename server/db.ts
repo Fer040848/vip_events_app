@@ -272,6 +272,24 @@ export async function linkAccessCodeToUser(codeId: number, userId: number) {
   await db.update(accessCodes).set({ userId, lastUsedAt: new Date() }).where(eq(accessCodes.id, codeId));
 }
 
+export async function createAccessCode(code: string, role: "admin" | "user", displayName?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Check if code already exists
+  const existing = await getAccessCodeByCode(code);
+  if (existing) throw new Error("Este código ya existe");
+  
+  const result = await db.insert(accessCodes).values({
+    code: code.toLowerCase().trim(),
+    role,
+    displayName: displayName || code,
+    isActive: true,
+  });
+  
+  return result[0].insertId;
+}
+
 export async function getAllAccessCodes() {
   const db = await getDb();
   if (!db) return [];

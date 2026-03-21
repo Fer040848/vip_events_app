@@ -210,7 +210,7 @@ export default function GenerateCodesScreen() {
           ) : (
             <FlatList
               data={codes}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.id.toString()}
               scrollEnabled={false}
               contentContainerStyle={{ gap: 8 }}
               renderItem={({ item }) => (

@@ -163,6 +163,20 @@ export const appRouter = router({
   accessCodes: router({
     // Seed codes on startup (called from app init)
     seed: publicProcedure.mutation(() => db.seedAccessCodes()),
+    // Create new access code (admin only)
+    create: protectedProcedure.input(z.object({
+      code: z.string().min(1).max(50),
+      role: z.enum(["admin", "user"]),
+      displayName: z.string().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.createAccessCode(input.code, input.role, input.displayName);
+    }),
+    // Get all access codes (admin only)
+    list: protectedProcedure.query(({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.getAllAccessCodes();
+    }),
     // Validate and login with code
     login: publicProcedure.input(z.object({ code: z.string() })).mutation(async ({ input }) => {
       await db.seedAccessCodes();

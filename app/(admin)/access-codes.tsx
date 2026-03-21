@@ -149,7 +149,7 @@ export default function AccessCodesScreen() {
     }
   };
 
-  const handleDeactivateCode = (codeId: string, code: string) => {
+  const handleDeactivateCode = (codeId: number, code: string) => {
     Alert.alert(
       "Desactivar código",
       `¿Estás seguro de que deseas desactivar ${code}?`,
@@ -401,7 +401,7 @@ export default function AccessCodesScreen() {
             <FlatList
               data={codes}
               renderItem={renderCodeItem}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.id.toString()}
               scrollEnabled={false}
               nestedScrollEnabled={false}
             />
