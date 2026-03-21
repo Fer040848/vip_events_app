@@ -31,7 +31,7 @@ const env = {
   appName: "AfterRoommx",
   appSlug: "afterroommx",
   // S3 URL of the app logo
-  logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663241158968/Po6GJtyBQyzCaFsPxTxF6w/icon-KgZvHJErS7h6rH6UMuTyCA.webp",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663241158968/olKsHTnjkVPHSFxK.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,

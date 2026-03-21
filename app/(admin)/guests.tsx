@@ -1,5 +1,7 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useGuestsManagement } from "@/hooks/use-guests-management";
+import * as Haptics from "expo-haptics";
 import {
   ActivityIndicator,
   Alert,
@@ -9,12 +11,104 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 
 export default function AdminGuestsScreen() {
   const [search, setSearch] = useState("");
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected'>('all');
+  const [selectedGuest, setSelectedGuest] = useState<any>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [notesText, setNotesText] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { guests, loading: guestsLoading, getPaymentStats, verifyPayment, rejectPayment, loadGuests } = useGuestsManagement();
+
+  useEffect(() => {
+    loadGuests();
+  }, [loadGuests]);
+
+  const stats = getPaymentStats();
+
+  const handleVerifyPayment = async (guestId: string) => {
+    Alert.alert('Verificar Pago', '¿Confirmar que el pago fue verificado?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Verificar',
+        onPress: async () => {
+          try {
+            setIsUpdating(true);
+            await verifyPayment(guestId, notesText);
+            if (Platform.OS !== 'web') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            Alert.alert('✅ Éxito', 'Pago verificado correctamente');
+            setShowDetailsModal(false);
+            setNotesText('');
+          } catch (error) {
+            Alert.alert('Error', 'No se pudo verificar el pago');
+          } finally {
+            setIsUpdating(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleRejectPayment = async (guestId: string) => {
+    Alert.alert('Rechazar Pago', '¿Rechazar este pago?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Rechazar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsUpdating(true);
+            await rejectPayment(guestId, notesText);
+            if (Platform.OS !== 'web') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+            Alert.alert('⚠️ Rechazado', 'Pago rechazado');
+            setShowDetailsModal(false);
+            setNotesText('');
+          } catch (error) {
+            Alert.alert('Error', 'No se pudo rechazar el pago');
+          } finally {
+            setIsUpdating(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const openGuestDetails = (guest: any) => {
+    setSelectedGuest(guest);
+    setNotesText(guest.notes || '');
+    setShowDetailsModal(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'verified':
+        return '#22C55E';
+      case 'rejected':
+        return '#EF4444';
+      default:
+        return '#F59E0B';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'verified':
+        return '✅ Verificado';
+      case 'rejected':
+        return '❌ Rechazado';
+      default:
+        return '⏳ Pendiente';
+    }
+  };
 
   const { data: users, isLoading: loadingUsers } = trpc.admin.users.useQuery();
   const { data: events } = trpc.events.listAll.useQuery();
@@ -39,6 +133,17 @@ export default function AdminGuestsScreen() {
       u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredGuests = guests.filter((guest) => {
+    const matchesSearch =
+      guest.name.toLowerCase().includes(search.toLowerCase()) ||
+      guest.code.toLowerCase().includes(search.toLowerCase()) ||
+      guest.email?.toLowerCase().includes(search.toLowerCase());
+
+    const matchesFilter = filterStatus === 'all' || guest.paymentStatus === filterStatus;
+
+    return matchesSearch && matchesFilter;
+  });
+
   const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     pending: { label: "Pendiente", color: "#F39C12" },
     paid: { label: "Pagado", color: "#27AE60" },
@@ -51,10 +156,56 @@ export default function AdminGuestsScreen() {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Invitados</Text>
+          <Text style={styles.headerTitle}>Gestión de Invitados</Text>
           <Text style={styles.headerSubtitle}>
-            {users?.length ?? 0} usuarios registrados
+            {guests.length} usuarios registrados
           </Text>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={[styles.statCard, { borderColor: '#C9A84C' }]}>
+            <Text style={styles.statLabel}>Total</Text>
+            <Text style={styles.statValue}>{stats.total}</Text>
+          </View>
+          <View style={[styles.statCard, { borderColor: '#22C55E' }]}>
+            <Text style={styles.statLabel}>Verificados</Text>
+            <Text style={[styles.statValue, { color: '#22C55E' }]}>{stats.verified}</Text>
+          </View>
+          <View style={[styles.statCard, { borderColor: '#F59E0B' }]}>
+            <Text style={styles.statLabel}>Pendientes</Text>
+            <Text style={[styles.statValue, { color: '#F59E0B' }]}>{stats.pending}</Text>
+          </View>
+          <View style={[styles.statCard, { borderColor: '#EF4444' }]}>
+            <Text style={styles.statLabel}>Rechazados</Text>
+            <Text style={[styles.statValue, { color: '#EF4444' }]}>{stats.rejected}</Text>
+          </View>
+        </View>
+
+        {/* Filter Status */}
+        <View style={styles.filterContainer}>
+          <Text style={styles.filterLabel}>Filtrar por estado:</Text>
+          <View style={styles.filterChips}>
+            {(['all', 'pending', 'verified', 'rejected'] as const).map((status) => (
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.filterChip,
+                  filterStatus === status && styles.filterChipActive,
+                ]}
+                onPress={() => setFilterStatus(status)}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    filterStatus === status && styles.filterChipTextActive,
+                  ]}
+                >
+                  {status === 'all' ? 'Todos' : getStatusLabel(status).split(' ')[1]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Event Filter */}
@@ -412,5 +563,40 @@ const styles = StyleSheet.create({
   },
   userRole: {
     fontSize: 20,
+  },
+  statsContainer: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#8A7A5A',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: '#F5E6C8',
+  },
+  filterContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  filterChips: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    flexWrap: 'wrap' as const,
   },
 });

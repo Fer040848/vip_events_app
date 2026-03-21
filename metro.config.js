@@ -1,5 +1,10 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
+const dotenv = require("dotenv");
+const path = require("path");
+
+// Cargar variables de entorno desde .env.local
+dotenv.config({ path: path.resolve(__dirname, ".env.local") });
 
 const config = getDefaultConfig(__dirname);
 

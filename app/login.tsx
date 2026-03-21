@@ -15,12 +15,14 @@ import * as Auth from "@/lib/_core/auth";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { ScreenContainer } from "@/components/screen-container";
 import * as Haptics from "expo-haptics";
+import { useUserPersistence } from "@/hooks/use-user-persistence";
 
 export default function LoginScreen() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const { saveUser } = useUserPersistence();
 
   const handleLogin = async () => {
     const trimmedCode = code.trim().toLowerCase();
@@ -63,6 +65,17 @@ export default function LoginScreen() {
       };
       await Auth.setUserInfo(userInfo);
 
+      // Guardar datos de usuario en persistencia local
+      await saveUser({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        code: trimmedCode,
+        isAdmin: data.role === 'admin',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      });
+
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
@@ -103,7 +116,7 @@ export default function LoginScreen() {
             <View style={styles.crownContainer}>
               <Text style={styles.crown}>♛</Text>
             </View>
-            <Text style={styles.title}>VIP Events</Text>
+            <Text style={styles.title}>After Room</Text>
             <Text style={styles.subtitle}>Plataforma Exclusiva</Text>
           </View>
 
