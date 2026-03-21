@@ -27,12 +27,12 @@ export default function VipProductsEditScreen() {
   }, [id]);
 
   const loadProduct = (productId: string) => {
-    const product = products.find(p => p.id === productId);
+    const product = products.find(p => p.id === Number(productId));
     if (product) {
       setName(product.name);
-      setDescription(product.description);
+      setDescription(product.description || "");
       setPrice(product.price.toString());
-      setCategory(product.category);
+      setCategory(product.category || "");
     }
   };
 
@@ -50,7 +50,7 @@ export default function VipProductsEditScreen() {
     setLoading(true);
     try {
       if (isEditing && id) {
-        await updateProduct(id as string, {
+        await updateProduct(Number(id), {
           name,
           description,
           price: parseFloat(price),
@@ -62,8 +62,7 @@ export default function VipProductsEditScreen() {
           name,
           description,
           parseFloat(price),
-          category,
-          user.id.toString()
+          category
         );
         Alert.alert('Éxito', 'Producto creado correctamente');
       }

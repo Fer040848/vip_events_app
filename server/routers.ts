@@ -349,6 +349,45 @@ export const appRouter = router({
       db.deleteEventPhoto(input.photoId, ctx.user.id)
     ),
   }),
+  vipProducts: router({
+    list: protectedProcedure.query(({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.getAllVipOrders();
+    }),
+    create: protectedProcedure.input(z.object({
+      name: z.string().min(1).max(255),
+      description: z.string().optional(),
+      price: z.number().positive(),
+      category: z.string().optional(),
+    })).mutation(({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.createVipOrder({
+        userId: ctx.user.id,
+        eventId: 0,
+        invitationId: 0,
+        items: JSON.stringify(input),
+        status: "pending",
+      });
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      price: z.number().optional(),
+      category: z.string().optional(),
+      status: z.enum(["pending", "confirmed", "delivered", "cancelled"]).optional(),
+    })).mutation(({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      const { id, ...updates } = input;
+      return db.updateVipOrder(id, { items: JSON.stringify(updates) });
+    }),
+    delete: protectedProcedure.input(z.object({
+      id: z.number(),
+    })).mutation(({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return db.updateVipOrder(input.id, { status: "cancelled" });
+    }),
+  }),
 });
 export type AppRouter = typeof appRouter;
 

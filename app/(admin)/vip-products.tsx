@@ -55,8 +55,7 @@ export default function VIPProductsScreen() {
         name,
         description,
         parseFloat(price),
-        category || "General",
-        String(user.id)
+        category || "General"
       );
       setName("");
       setDescription("");
@@ -90,7 +89,7 @@ export default function VIPProductsScreen() {
 
     setCreating(true);
     try {
-      await updateProduct(editingId, {
+      await updateProduct(Number(editingId), {
         name,
         description,
         price: parseFloat(price),
@@ -122,7 +121,7 @@ export default function VIPProductsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteProduct(productId);
+              await deleteProduct(Number(productId));
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (err) {
               Alert.alert("Error", "No se pudo eliminar el producto");
@@ -273,7 +272,7 @@ export default function VIPProductsScreen() {
             <FlatList
               data={products}
               renderItem={renderProductItem}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.id.toString()}
               scrollEnabled={false}
               nestedScrollEnabled={false}
             />
