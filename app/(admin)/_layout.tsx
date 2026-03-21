@@ -50,6 +50,7 @@ export default function AdminLayout() {
         },
       }}
     >
+      {/* Dashboard - Principal */}
       <Tabs.Screen
         name="index"
         options={{
@@ -57,13 +58,8 @@ export default function AdminLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="chart.bar.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="scan"
-        options={{
-          title: "Escanear",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="qrcode.viewfinder" color={color} />,
-        }}
-      />
+
+      {/* Eventos - Gestión de eventos */}
       <Tabs.Screen
         name="events"
         options={{
@@ -71,6 +67,8 @@ export default function AdminLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="calendar" color={color} />,
         }}
       />
+
+      {/* Invitados - Gestión de pagos y asistencia */}
       <Tabs.Screen
         name="guests"
         options={{
@@ -78,25 +76,68 @@ export default function AdminLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.2.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: "Notifs",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="bell.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: "Pedidos",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="bag.fill" color={color} />,
-        }}
-      />
+
+      {/* Chat - Comunicación en tiempo real */}
       <Tabs.Screen
         name="chat"
         options={{
           title: "Chat",
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="bubble.left.and.bubble.right.fill" color={color} />,
+        }}
+      />
+
+      {/* Las siguientes pantallas no aparecen en el tab bar pero son accesibles desde el menú lateral */}
+      {/* Scan - Escanear QR */}
+      <Tabs.Screen
+        name="scan"
+        options={{
+          href: null, // Ocultar del tab bar
+          title: "Escanear",
+        }}
+      />
+
+      {/* Notifications - Notificaciones */}
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null, // Ocultar del tab bar
+          title: "Notificaciones",
+        }}
+      />
+
+      {/* Orders - Pedidos/Órdenes */}
+      <Tabs.Screen
+        name="orders"
+        options={{
+          href: null, // Ocultar del tab bar
+          title: "Pedidos",
+        }}
+      />
+
+      {/* Access Codes - Generación de códigos (solo admin) */}
+      <Tabs.Screen
+        name="access-codes"
+        options={{
+          href: null, // Ocultar del tab bar
+          title: "Códigos",
+        }}
+      />
+
+      {/* Payments - Gestión de pagos (solo admin) */}
+      <Tabs.Screen
+        name="payments"
+        options={{
+          href: null, // Ocultar del tab bar
+          title: "Pagos",
+        }}
+      />
+
+      {/* VIP Products - Editar productos VIP (solo admin) */}
+      <Tabs.Screen
+        name="vip-products"
+        options={{
+          href: null, // Ocultar del tab bar
+          title: "Productos VIP",
         }}
       />
     </Tabs>

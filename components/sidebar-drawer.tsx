@@ -7,7 +7,7 @@ interface MenuItem {
   label: string;
   icon: string;
   route: string;
-  isAdmin?: boolean;
+  adminOnly?: boolean;
 }
 
 interface SidebarDrawerProps {
@@ -29,16 +29,19 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
   ];
 
   const adminMenuItems: MenuItem[] = [
-    { label: 'Dashboard', icon: 'chart.bar.fill', route: '/(admin)', isAdmin: true },
-    { label: 'Eventos', icon: 'calendar', route: '/(admin)/events', isAdmin: true },
-    { label: 'Invitados', icon: 'person.2.fill', route: '/(admin)/guests', isAdmin: true },
-    { label: 'Códigos', icon: 'key.fill', route: '/(admin)/access-codes', isAdmin: true },
-    { label: 'Pagos', icon: 'creditcard.fill', route: '/(admin)/payments', isAdmin: true },
-    { label: 'Productos VIP', icon: 'crown.fill', route: '/(admin)/vip-products', isAdmin: true },
-    { label: 'Chat', icon: 'bubble.left.and.bubble.right.fill', route: '/(admin)/chat', isAdmin: true },
+    { label: 'Dashboard', icon: 'chart.bar.fill', route: '/(admin)' },
+    { label: 'Eventos', icon: 'calendar', route: '/(admin)/events' },
+    { label: 'Invitados', icon: 'person.2.fill', route: '/(admin)/guests' },
+    { label: 'Códigos', icon: 'key.fill', route: '/(admin)/access-codes', adminOnly: true },
+    { label: 'Pagos', icon: 'creditcard.fill', route: '/(admin)/payments', adminOnly: true },
+    { label: 'Productos VIP', icon: 'crown.fill', route: '/(admin)/vip-products', adminOnly: true },
+    { label: 'Chat', icon: 'bubble.left.and.bubble.right.fill', route: '/(admin)/chat' },
   ];
 
-  const menuItems = isAdmin ? adminMenuItems : userMenuItems;
+  // Filtrar items: mostrar solo items de admin si isAdmin es true
+  const menuItems = isAdmin 
+    ? adminMenuItems 
+    : userMenuItems.filter(item => !item.adminOnly);
 
   const handleNavigate = (route: string) => {
     router.push(route as any);
@@ -51,8 +54,13 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>After Room</Text>
-        <Text style={styles.headerSubtitle}>{isAdmin ? 'Admin' : 'Usuario'}</Text>
+        <View style={styles.headerContent}>
+          <IconSymbol name="crown.fill" size={24} color="#C9A84C" />
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>After Room</Text>
+            <Text style={styles.headerSubtitle}>{isAdmin ? '👑 Admin' : '👤 Usuario'}</Text>
+          </View>
+        </View>
       </View>
 
       {/* Menu Items */}
@@ -62,22 +70,34 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
             key={index}
             style={[styles.menuItem, isActive(item.route) && styles.menuItemActive]}
             onPress={() => handleNavigate(item.route)}
+            activeOpacity={0.7}
           >
-            <IconSymbol
-              name={item.icon as any}
-              size={20}
-              color={isActive(item.route) ? '#C9A84C' : '#8A7A5A'}
-            />
+            <View style={styles.menuIconContainer}>
+              <IconSymbol
+                name={item.icon as any}
+                size={20}
+                color={isActive(item.route) ? '#C9A84C' : '#8A7A5A'}
+              />
+            </View>
             <Text style={[styles.menuLabel, isActive(item.route) && styles.menuLabelActive]}>
               {item.label}
             </Text>
+            {item.adminOnly && (
+              <View style={styles.adminBadge}>
+                <Text style={styles.adminBadgeText}>👑</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.logoutButton} onPress={() => router.push('/login' as any)}>
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={() => router.push('/login' as any)}
+          activeOpacity={0.7}
+        >
           <IconSymbol name="arrow.right.circle.fill" size={20} color="#EF4444" />
           <Text style={styles.logoutLabel}>Cerrar Sesión</Text>
         </TouchableOpacity>
@@ -99,20 +119,29 @@ const styles = StyleSheet.create({
     borderBottomColor: '#2A2A2A',
     borderBottomWidth: 1,
   },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerText: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#C9A84C',
     letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#8A7A5A',
-    marginTop: 4,
+    marginTop: 2,
+    fontWeight: '500',
   },
   menuContainer: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   menuItem: {
     flexDirection: 'row',
@@ -122,6 +151,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     marginVertical: 4,
     borderRadius: 8,
+    gap: 12,
   },
   menuItemActive: {
     backgroundColor: 'rgba(201, 168, 76, 0.1)',
@@ -129,15 +159,30 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     paddingLeft: 13,
   },
+  menuIconContainer: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   menuLabel: {
     fontSize: 14,
     color: '#8A7A5A',
-    marginLeft: 12,
     fontWeight: '500',
+    flex: 1,
   },
   menuLabelActive: {
     color: '#C9A84C',
     fontWeight: '600',
+  },
+  adminBadge: {
+    backgroundColor: 'rgba(201, 168, 76, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  adminBadgeText: {
+    fontSize: 12,
   },
   footer: {
     paddingVertical: 16,
@@ -152,11 +197,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderRadius: 8,
+    gap: 12,
   },
   logoutLabel: {
     fontSize: 14,
     color: '#EF4444',
-    marginLeft: 12,
     fontWeight: '600',
   },
 });
