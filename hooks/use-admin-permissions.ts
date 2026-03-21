@@ -1,67 +1,97 @@
-import { useAuth } from '@/hooks/use-auth';
+import { useCallback, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const MASTER_ADMIN_CODE = 'TLC001';
+const MASTER_ADMIN_CODE = 'tlc001';
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  code: string;
+  isAdmin: boolean;
+  createdAt: string;
+  lastLogin: string;
+}
 
 export function useAdminPermissions() {
-  const { user } = useAuth();
+  const [user, setUser] = useState<AdminUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const isMasterAdmin = () => {
-    return (user as any)?.role === 'admin' && (user as any)?.code === MASTER_ADMIN_CODE;
-  };
+  // Cargar datos del usuario desde AsyncStorage
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user_data');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const isAdmin = () => {
-    return (user as any)?.role === 'admin'
-  };
+    loadUser();
+  }, []);
 
-  const canCreateEvents = () => {
+  const isMasterAdmin = useCallback(() => {
+    if (!user) return false;
+    return user.isAdmin && user.code.toLowerCase() === MASTER_ADMIN_CODE;
+  }, [user]);
+
+  const isAdmin = useCallback(() => {
+    return user?.isAdmin ?? false;
+  }, [user]);
+
+  const canCreateEvents = useCallback(() => {
     return isAdmin();
-  };
+  }, [isAdmin]);
 
-  const canEditEvents = () => {
+  const canEditEvents = useCallback(() => {
     return isAdmin();
-  };
+  }, [isAdmin]);
 
-  const canDeleteEvents = () => {
+  const canDeleteEvents = useCallback(() => {
     return isMasterAdmin();
-  };
+  }, [isMasterAdmin]);
 
-  const canCreateProducts = () => {
+  const canCreateProducts = useCallback(() => {
     return isAdmin();
-  };
+  }, [isAdmin]);
 
-  const canEditProducts = () => {
+  const canEditProducts = useCallback(() => {
     return isAdmin();
-  };
+  }, [isAdmin]);
 
-  const canDeleteProducts = () => {
+  const canDeleteProducts = useCallback(() => {
     return isMasterAdmin();
-  };
+  }, [isMasterAdmin]);
 
-  const canCreateCodes = () => {
+  const canCreateCodes = useCallback(() => {
     return isAdmin();
-  };
+  }, [isAdmin]);
 
-  const canEditCodes = () => {
+  const canEditCodes = useCallback(() => {
     return isMasterAdmin();
-  };
+  }, [isMasterAdmin]);
 
-  const canDeleteCodes = () => {
+  const canDeleteCodes = useCallback(() => {
     return isMasterAdmin();
-  };
+  }, [isMasterAdmin]);
 
-  const canManageUsers = () => {
+  const canManageGuests = useCallback(() => {
     return isAdmin();
-  };
+  }, [isAdmin]);
 
-  const canVerifyPayments = () => {
+  const canVerifyPayments = useCallback(() => {
     return isAdmin();
-  };
-
-  const canAccessAllFeatures = () => {
-    return isMasterAdmin();
-  };
+  }, [isAdmin]);
 
   return {
+    user,
+    loading,
     isMasterAdmin: isMasterAdmin(),
     isAdmin: isAdmin(),
     canCreateEvents: canCreateEvents(),
@@ -73,8 +103,7 @@ export function useAdminPermissions() {
     canCreateCodes: canCreateCodes(),
     canEditCodes: canEditCodes(),
     canDeleteCodes: canDeleteCodes(),
-    canManageUsers: canManageUsers(),
+    canManageGuests: canManageGuests(),
     canVerifyPayments: canVerifyPayments(),
-    canAccessAllFeatures: canAccessAllFeatures(),
   };
 }
