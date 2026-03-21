@@ -21,10 +21,13 @@ export function useAdminPermissions() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const userData = await AsyncStorage.getItem('user_data');
+        const userData = await AsyncStorage.getItem('afterroom_user_data');
         if (userData) {
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
+          console.log('[useAdminPermissions] User loaded:', parsedUser);
+        } else {
+          console.log('[useAdminPermissions] No user data found in AsyncStorage');
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -34,6 +37,23 @@ export function useAdminPermissions() {
     };
 
     loadUser();
+  }, []);
+
+  // Recargar datos cuando el usuario cambia
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const userData = await AsyncStorage.getItem('afterroom_user_data');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        console.error('Error reloading user data:', error);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const isMasterAdmin = useCallback(() => {
