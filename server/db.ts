@@ -445,3 +445,11 @@ export async function getAllVipOrders() {
   if (!db) return [];
   return db.select().from(vipOrders).orderBy(desc(vipOrders.createdAt));
 }
+
+
+export async function updateUserPushToken(userId: number, token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ pushToken: token }).where(eq(users.id, userId));
+  return { success: true };
+}

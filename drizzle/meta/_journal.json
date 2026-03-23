@@ -36,6 +36,34 @@
       "when": 1771783327755,
       "tag": "0004_keen_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1774308976449,
+      "tag": "0005_previous_riptide",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1774309003224,
+      "tag": "0006_melted_kang",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1774309101596,
+      "tag": "0007_dizzy_vivisector",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1774309193868,
+      "tag": "0008_rich_longshot",
+      "breakpoints": true
     }
   ]
 }

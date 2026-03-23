@@ -1,0 +1,1 @@
+ALTER TABLE `device_tokens` MODIFY COLUMN `token` varchar(500) NOT NULL;
