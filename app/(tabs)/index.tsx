@@ -3,17 +3,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Animated,
+  Dimensions,
 } from "react-native";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
+import * as Haptics from "expo-haptics";
+
+const { width } = Dimensions.get("window");
 
 function useCountdown(targetDate: Date | null) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
@@ -45,6 +51,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const { data: events, isLoading, refetch } = trpc.events.upcoming.useQuery();
   const { data: notifications } = trpc.notifications.list.useQuery(undefined, {
@@ -64,9 +71,22 @@ export default function HomeScreen() {
   const recentNotifications = notifications?.slice(0, 3) ?? [];
   const paidInvitations = myInvitations?.filter((i) => i.status === "paid" || i.status === "checked_in") ?? [];
 
-  // Countdown to next event
   const eventDate = nextEvent?.date ? new Date(nextEvent.date) : null;
   const countdown = useCountdown(eventDate);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
 
   return (
     <ScreenContainer containerClassName="bg-background">
@@ -77,93 +97,127 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#C9A84C"
+            tintColor="#6366F1"
           />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Bienvenido</Text>
-            <Text style={styles.userName}>{user?.name ?? "Invitado VIP"}</Text>
+        {/* Header con gradiente */}
+        <LinearGradient
+          colors={["#6366F1", "#EC4899"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Bienvenido de vuelta</Text>
+              <Text style={styles.userName}>{user?.name ?? "Invitado VIP"}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.notifButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(tabs)/profile" as any);
+              }}
+            >
+              <Text style={styles.notifIcon}>🔔</Text>
+              {recentNotifications.length > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{recentNotifications.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.notifButton}
-            onPress={() => router.push("/(tabs)/profile" as any)}
-          >
-            <Text style={styles.notifIcon}>🔔</Text>
-            {recentNotifications.length > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{recentNotifications.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         {/* Featured Event Banner */}
         {isLoading ? (
           <View style={styles.loadingBanner}>
-            <ActivityIndicator color="#C9A84C" />
+            <ActivityIndicator color="#6366F1" size="large" />
           </View>
         ) : nextEvent ? (
-          <TouchableOpacity
-            style={styles.featuredBanner}
-            onPress={() => router.push(`/event/${nextEvent.id}` as any)}
-            activeOpacity={0.9}
-          >
-            {nextEvent.imageUrl ? (
-              <Image source={{ uri: nextEvent.imageUrl }} style={styles.bannerImage} />
-            ) : (
-              <View style={styles.bannerPlaceholder} />
-            )}
-            <View style={styles.bannerOverlay}>
-              <View style={styles.bannerBadge}>
-                <Text style={styles.bannerBadgeText}>PRÓXIMO EVENTO</Text>
-              </View>
-              <Text style={styles.bannerTitle}>{nextEvent.title}</Text>
-              <Text style={styles.bannerDate}>
-                {new Date(nextEvent.date).toLocaleDateString("es-MX", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </Text>
-              {/* Countdown */}
-              {!countdown.expired && (
-                <View style={styles.countdownRow}>
-                  {[
-                    { val: countdown.days, label: "DÍAS" },
-                    { val: countdown.hours, label: "HRS" },
-                    { val: countdown.minutes, label: "MIN" },
-                    { val: countdown.seconds, label: "SEG" },
-                  ].map(({ val, label }) => (
-                    <View key={label} style={styles.countdownBlock}>
-                      <Text style={styles.countdownNum}>{String(val).padStart(2, "0")}</Text>
-                      <Text style={styles.countdownLabel}>{label}</Text>
+          <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
+            <TouchableOpacity
+              style={styles.featuredBanner}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push(`/event/${nextEvent.id}` as any);
+              }}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={["#6366F1", "#EC4899"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.bannerGradient}
+              >
+                {nextEvent.imageUrl && (
+                  <Image
+                    source={{ uri: nextEvent.imageUrl }}
+                    style={styles.bannerImage}
+                    contentFit="cover"
+                  />
+                )}
+                <View style={styles.bannerOverlay}>
+                  <View style={styles.bannerBadge}>
+                    <Text style={styles.bannerBadgeText}>✨ PRÓXIMO EVENTO</Text>
+                  </View>
+                  <Text style={styles.bannerTitle}>{nextEvent.title}</Text>
+                  <Text style={styles.bannerDate}>
+                    {new Date(nextEvent.date).toLocaleDateString("es-MX", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </Text>
+
+                  {!countdown.expired && (
+                    <View style={styles.countdownRow}>
+                      {[
+                        { val: countdown.days, label: "DÍAS" },
+                        { val: countdown.hours, label: "HRS" },
+                        { val: countdown.minutes, label: "MIN" },
+                        { val: countdown.seconds, label: "SEG" },
+                      ].map(({ val, label }) => (
+                        <View key={label} style={styles.countdownBlock}>
+                          <Text style={styles.countdownNum}>{String(val).padStart(2, "0")}</Text>
+                          <Text style={styles.countdownLabel}>{label}</Text>
+                        </View>
+                      ))}
                     </View>
-                  ))}
+                  )}
+
+                  {countdown.expired && (
+                    <View style={styles.eventLiveRow}>
+                      <View style={styles.liveDot} />
+                      <Text style={styles.liveText}>EN VIVO AHORA 🔴</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.bannerFooter}>
+                    <View>
+                      <Text style={styles.bannerPrice}>${nextEvent.price} MXN</Text>
+                      <Text style={styles.bannerLocation}>📍 {nextEvent.location ?? "Lugar por confirmar"}</Text>
+                    </View>
+                    <View style={styles.bannerCTA}>
+                      <Text style={styles.bannerCTAText}>Ver detalles →</Text>
+                    </View>
+                  </View>
                 </View>
-              )}
-              {countdown.expired && (
-                <View style={styles.eventLiveRow}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>EN VIVO AHORA</Text>
-                </View>
-              )}
-              <View style={styles.bannerFooter}>
-                <Text style={styles.bannerPrice}>${nextEvent.price} MXN</Text>
-                <Text style={styles.bannerLocation}>{nextEvent.location ?? "Lugar por confirmar"}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
         ) : (
           <View style={styles.noEventBanner}>
             <Text style={styles.noEventIcon}>👑</Text>
             <Text style={styles.noEventText}>No hay eventos próximos</Text>
+            <Text style={styles.noEventSubtext}>¡Mantente atento para nuevas sorpresas!</Text>
           </View>
         )}
 
-        {/* Quick Access */}
+        {/* Quick Access Grid */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acceso Rápido</Text>
           <View style={styles.quickGrid}>
@@ -172,24 +226,28 @@ export default function HomeScreen() {
               label="Mi QR"
               sublabel={`${paidInvitations.length} activo(s)`}
               onPress={() => router.push("/(tabs)/my-qr" as any)}
+              gradient={["#6366F1", "#818CF8"]}
             />
             <QuickCard
               icon="📅"
               label="Eventos"
               sublabel="Ver calendario"
               onPress={() => router.push("/(tabs)/events" as any)}
+              gradient={["#EC4899", "#F472B6"]}
             />
             <QuickCard
               icon="🍾"
               label="Servicio VIP"
               sublabel="Pedir ahora"
               onPress={() => router.push("/(tabs)/vip-orders" as any)}
+              gradient={["#10B981", "#34D399"]}
             />
             <QuickCard
-              icon="🔔"
-              label="Notificaciones"
-              sublabel={`${recentNotifications.length} nuevas`}
-              onPress={() => router.push("/(tabs)/profile" as any)}
+              icon="💬"
+              label="Chat"
+              sublabel="Conectar"
+              onPress={() => router.push("/(tabs)/chat" as any)}
+              gradient={["#F59E0B", "#FBBF24"]}
             />
           </View>
         </View>
@@ -200,7 +258,7 @@ export default function HomeScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Próximos Eventos</Text>
               <TouchableOpacity onPress={() => router.push("/(tabs)/events" as any)}>
-                <Text style={styles.seeAll}>Ver todos</Text>
+                <Text style={styles.seeAll}>Ver todos →</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -212,23 +270,33 @@ export default function HomeScreen() {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.eventCard}
-                  onPress={() => router.push(`/event/${item.id}` as any)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push(`/event/${item.id}` as any);
+                  }}
                   activeOpacity={0.85}
                 >
-                  {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.eventCardImage} />
-                  ) : (
-                    <View style={styles.eventCardImagePlaceholder}>
-                      <Text style={{ fontSize: 32 }}>🎉</Text>
+                  <LinearGradient
+                    colors={["#6366F1", "#EC4899"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.eventCardGradient}
+                  >
+                    {item.imageUrl && (
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.eventCardImage}
+                        contentFit="cover"
+                      />
+                    )}
+                    <View style={styles.eventCardContent}>
+                      <Text style={styles.eventCardTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.eventCardDate}>
+                        {new Date(item.date).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                      </Text>
+                      <Text style={styles.eventCardPrice}>${item.price} MXN</Text>
                     </View>
-                  )}
-                  <View style={styles.eventCardContent}>
-                    <Text style={styles.eventCardTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.eventCardDate}>
-                      {new Date(item.date).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
-                    </Text>
-                    <Text style={styles.eventCardPrice}>${item.price} MXN</Text>
-                  </View>
+                  </LinearGradient>
                 </TouchableOpacity>
               )}
             />
@@ -260,17 +328,33 @@ function QuickCard({
   label,
   sublabel,
   onPress,
+  gradient,
 }: {
   icon: string;
   label: string;
   sublabel: string;
   onPress: () => void;
+  gradient: [string, string];
 }) {
   return (
-    <TouchableOpacity style={styles.quickCard} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.quickCardIcon}>{icon}</Text>
-      <Text style={styles.quickCardLabel}>{label}</Text>
-      <Text style={styles.quickCardSublabel}>{sublabel}</Text>
+    <TouchableOpacity
+      style={styles.quickCard}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      activeOpacity={0.8}
+    >
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.quickCardGradient}
+      >
+        <Text style={styles.quickCardIcon}>{icon}</Text>
+        <Text style={styles.quickCardLabel}>{label}</Text>
+        <Text style={styles.quickCardSublabel}>{sublabel}</Text>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -278,312 +362,319 @@ function QuickCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0A0A0A",
+    backgroundColor: "#0F172A",
+  },
+  headerGradient: {
+    paddingTop: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
   },
   greeting: {
-    fontSize: 13,
-    color: "#8A7A5A",
-    letterSpacing: 0.5,
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.7)",
+    fontWeight: "500",
   },
   userName: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#F5E6C8",
-    marginTop: 2,
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginTop: 4,
   },
   notifButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#1A1A1A",
-    alignItems: "center",
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
+    alignItems: "center",
   },
   notifIcon: {
-    fontSize: 20,
+    fontSize: 24,
   },
   notifBadge: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    backgroundColor: "#C9A84C",
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    alignItems: "center",
+    top: -8,
+    right: -8,
+    backgroundColor: "#EF4444",
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: "center",
+    alignItems: "center",
   },
   notifBadgeText: {
-    color: "#0A0A0A",
-    fontSize: 10,
-    fontWeight: "700",
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "bold",
   },
   loadingBanner: {
-    height: 220,
-    marginHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: "#1A1A1A",
-    alignItems: "center",
+    height: 200,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
     justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
   },
   featuredBanner: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
     borderRadius: 20,
     overflow: "hidden",
-    height: 220,
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#C9A84C33",
+    height: 280,
+  },
+  bannerGradient: {
+    flex: 1,
+    justifyContent: "space-between",
   },
   bannerImage: {
+    position: "absolute",
     width: "100%",
     height: "100%",
-    position: "absolute",
-  },
-  bannerPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#1A1A1A",
-    position: "absolute",
   },
   bannerOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "space-between",
     padding: 20,
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   bannerBadge: {
-    backgroundColor: "#C9A84C",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     alignSelf: "flex-start",
-    marginBottom: 8,
+    backdropFilter: "blur(10px)",
   },
   bannerBadgeText: {
-    color: "#0A0A0A",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "bold",
   },
   bannerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#F5E6C8",
-    marginBottom: 4,
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginTop: 8,
   },
   bannerDate: {
-    fontSize: 13,
-    color: "#C9A84C",
-    marginBottom: 12,
-    textTransform: "capitalize",
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginTop: 4,
+  },
+  countdownRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  countdownBlock: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  countdownNum: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  countdownLabel: {
+    fontSize: 10,
+    color: "rgba(255, 255, 255, 0.7)",
+    marginTop: 2,
+  },
+  eventLiveRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#EF4444",
+  },
+  liveText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFFFFF",
   },
   bannerFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 12,
   },
   bannerPrice: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#C9A84C",
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
   },
   bannerLocation: {
     fontSize: 12,
-    color: "#8A7A5A",
-    flex: 1,
-    textAlign: "right",
-    marginLeft: 8,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginTop: 4,
+  },
+  bannerCTA: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  bannerCTAText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "bold",
   },
   noEventBanner: {
-    marginHorizontal: 20,
-    borderRadius: 20,
-    height: 160,
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingVertical: 40,
+    borderRadius: 16,
     justifyContent: "center",
-    gap: 8,
+    alignItems: "center",
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(99, 102, 241, 0.3)",
+    borderStyle: "dashed",
   },
   noEventIcon: {
-    fontSize: 40,
+    fontSize: 48,
+    marginBottom: 12,
   },
   noEventText: {
-    color: "#8A7A5A",
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#F8FAFC",
+  },
+  noEventSubtext: {
+    fontSize: 12,
+    color: "rgba(248, 250, 252, 0.6)",
+    marginTop: 4,
   },
   section: {
-    marginTop: 28,
-    paddingHorizontal: 20,
+    marginHorizontal: 16,
+    marginTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#F8FAFC",
+    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#F5E6C8",
-    marginBottom: 14,
-    letterSpacing: 0.3,
+    marginBottom: 12,
   },
   seeAll: {
-    fontSize: 13,
-    color: "#C9A84C",
+    fontSize: 12,
+    color: "#6366F1",
     fontWeight: "600",
   },
   quickGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
+    justifyContent: "space-between",
   },
   quickCard: {
-    flex: 1,
-    minWidth: "44%",
-    backgroundColor: "#1A1A1A",
+    width: "48%",
     borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-    alignItems: "flex-start",
-    gap: 6,
-  },
-  quickCardIcon: {
-    fontSize: 28,
-  },
-  quickCardLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#F5E6C8",
-  },
-  quickCardSublabel: {
-    fontSize: 11,
-    color: "#8A7A5A",
-  },
-  eventCard: {
-    width: 160,
-    backgroundColor: "#1A1A1A",
-    borderRadius: 14,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
   },
-  eventCardImage: {
-    width: "100%",
-    height: 100,
-  },
-  eventCardImagePlaceholder: {
-    width: "100%",
-    height: 100,
-    backgroundColor: "#2A2A2A",
+  quickCardGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
   },
+  quickCardIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  quickCardLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  quickCardSublabel: {
+    fontSize: 11,
+    color: "rgba(255, 255, 255, 0.7)",
+    marginTop: 4,
+  },
+  eventCard: {
+    width: width - 80,
+    borderRadius: 16,
+    overflow: "hidden",
+    height: 200,
+  },
+  eventCardGradient: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  eventCardImage: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+  },
   eventCardContent: {
     padding: 12,
-    gap: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   eventCardTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#F5E6C8",
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFFFFF",
   },
   eventCardDate: {
-    fontSize: 11,
-    color: "#C9A84C",
-    textTransform: "capitalize",
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.7)",
+    marginTop: 4,
   },
   eventCardPrice: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#8A7A5A",
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#F5D78E",
+    marginTop: 4,
   },
   notifCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#1A1A1A",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
     gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    borderRadius: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: "#6366F1",
   },
   notifDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#C9A84C",
+    backgroundColor: "#6366F1",
     marginTop: 6,
   },
   notifTitle: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#F5E6C8",
-    marginBottom: 4,
+    fontWeight: "bold",
+    color: "#F8FAFC",
   },
   notifBody: {
     fontSize: 12,
-    color: "#8A7A5A",
-    lineHeight: 17,
-  },
-  countdownRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginVertical: 10,
-  },
-  countdownBlock: {
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    minWidth: 48,
-    borderWidth: 1,
-    borderColor: "rgba(201,168,76,0.4)",
-  },
-  countdownNum: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#C9A84C",
-    fontVariant: ["tabular-nums"],
-  },
-  countdownLabel: {
-    fontSize: 9,
-    color: "#aaa",
-    fontWeight: "700",
-    letterSpacing: 1,
-    marginTop: 1,
-  },
-  eventLiveRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginVertical: 8,
-  },
-  liveDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#22C55E",
-  },
-  liveText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#22C55E",
-    letterSpacing: 2,
+    color: "rgba(248, 250, 252, 0.7)",
+    marginTop: 4,
   },
 });
