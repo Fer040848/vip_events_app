@@ -186,3 +186,15 @@
 - [ ] Documento: invitations con campo payment_proof_url
 - [ ] Documento: vip_products con campos editables para admin
 - [ ] Documento: access_codes con campo role (admin/user)
+
+## Rediseño Visual v10 - Dorado y Negro
+- [x] Cambiar tema global (theme.config.js) a paleta dorado (#C9A84C) y negro (#0A0A0A)
+- [x] Actualizar pantalla de inicio con colores dorado/negro (eliminar gradientes azul-rosa)
+- [x] Actualizar tab bar inferior con colores dorado/negro
+- [x] Actualizar header de navegación con colores dorado/negro
+- [x] Actualizar sidebar/drawer con colores dorado/negro
+- [x] Actualizar EventCard enhanced con colores dorado/negro
+- [x] Actualizar pantalla de admin dashboard con colores dorado/negro
+- [x] Verificar que pantalla de login mantiene colores dorado/negro
+- [x] Barra de navegación inferior funcional con 5 pestañas (Inicio, Eventos, Mi QR, Chat, Perfil)
+- [x] Verificar compilación sin errores de TypeScript

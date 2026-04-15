@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { View, Platform, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Platform, TouchableOpacity, StyleSheet, Animated, Dimensions, Text } from 'react-native';
 import { GestureHandlerRootView, DrawerLayoutAndroid } from 'react-native-gesture-handler';
-import { Stack, useRouter } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarDrawer } from '@/components/sidebar-drawer';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import * as Haptics from 'expo-haptics';
 
 const DRAWER_WIDTH = 280;
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function TabLayout() {
   const { isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const drawerRef = React.useRef<DrawerLayoutAndroid>(null);
   const [webDrawerOpen, setWebDrawerOpen] = useState(false);
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -40,7 +42,6 @@ export default function TabLayout() {
   const toggleWebDrawer = () => {
     const isOpen = webDrawerOpen;
     setWebDrawerOpen(!isOpen);
-
     Animated.timing(slideAnim, {
       toValue: isOpen ? -DRAWER_WIDTH : 0,
       duration: 300,
@@ -48,26 +49,133 @@ export default function TabLayout() {
     }).start();
   };
 
-  const MenuButton = () => (
-    <TouchableOpacity
-      style={styles.menuButton}
-      onPress={() => {
-        if (Platform.OS === 'web') {
-          toggleWebDrawer();
-        } else {
-          drawerRef.current?.openDrawer();
-        }
+  const openDrawer = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    if (Platform.OS === 'web') {
+      toggleWebDrawer();
+    } else {
+      drawerRef.current?.openDrawer();
+    }
+  };
+
+  const bottomPadding = Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + bottomPadding;
+
+  const tabsContent = (
+    <Tabs
+      screenOptions={{
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#0A0A0A',
+        },
+        headerTintColor: '#C9A84C',
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: 18,
+          color: '#C9A84C',
+        },
+        headerLeft: () => (
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={openDrawer}
+            activeOpacity={0.7}
+          >
+            <IconSymbol name="line.3.horizontal" size={24} color="#C9A84C" />
+          </TouchableOpacity>
+        ),
+        tabBarActiveTintColor: '#C9A84C',
+        tabBarInactiveTintColor: '#8A8A8A',
+        tabBarStyle: {
+          paddingTop: 8,
+          paddingBottom: bottomPadding,
+          height: tabBarHeight,
+          backgroundColor: '#0A0A0A',
+          borderTopColor: '#2A2A2A',
+          borderTopWidth: 0.5,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+        },
       }}
-      activeOpacity={0.7}
     >
-      <IconSymbol name="line.3.horizontal" size={24} color="#C9A84C" />
-    </TouchableOpacity>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Inicio',
+          headerTitle: 'After Room',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          title: 'Eventos',
+          headerTitle: 'Eventos',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="calendar" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="my-qr"
+        options={{
+          title: 'Mi QR',
+          headerTitle: 'Mi QR',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="qrcode" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          headerTitle: 'Chat',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="message.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Perfil',
+          headerTitle: 'Mi Perfil',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.fill" color={color} />,
+        }}
+      />
+      {/* Pantallas ocultas del tab bar */}
+      <Tabs.Screen
+        name="vip-orders"
+        options={{
+          href: null,
+          headerTitle: 'Servicio VIP',
+        }}
+      />
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          href: null,
+          headerTitle: 'Leaderboard',
+        }}
+      />
+      <Tabs.Screen
+        name="user-profile"
+        options={{
+          href: null,
+          headerTitle: 'Perfil de Usuario',
+        }}
+      />
+      <Tabs.Screen
+        name="_layout-drawer"
+        options={{
+          href: null,
+        }}
+      />
+    </Tabs>
   );
 
   // Web layout with animated drawer
   if (Platform.OS === 'web') {
     return (
-      <View style={{ flex: 1, flexDirection: 'row' }}>
+      <View style={{ flex: 1 }}>
         {/* Overlay backdrop */}
         {webDrawerOpen && (
           <TouchableOpacity
@@ -89,21 +197,8 @@ export default function TabLayout() {
           {renderDrawer()}
         </Animated.View>
 
-        {/* Main content */}
-        <View style={{ flex: 1, flexDirection: 'column' }}>
-          {/* Header with menu button */}
-          <View style={styles.webHeader}>
-            <MenuButton />
-            <View style={styles.webHeaderTitle}>
-              <IconSymbol name="crown.fill" size={20} color="#C9A84C" />
-            </View>
-          </View>
-
-          {/* Content */}
-          <View style={{ flex: 1 }}>
-            <Stack screenOptions={{ headerShown: false }} />
-          </View>
-        </View>
+        {/* Main content with tabs */}
+        {tabsContent}
       </View>
     );
   }
@@ -118,21 +213,7 @@ export default function TabLayout() {
         renderNavigationView={renderDrawer}
         drawerLockMode="unlocked"
       >
-        <Stack
-          screenOptions={{
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: '#0A0A0A',
-            },
-            headerTintColor: '#C9A84C',
-            headerTitleStyle: {
-              fontWeight: '700',
-              fontSize: 18,
-            },
-            headerLeft: () => <MenuButton />,
-            headerTitle: 'After Room',
-          }}
-        />
+        {tabsContent}
       </DrawerLayoutAndroid>
     </GestureHandlerRootView>
   );
@@ -143,20 +224,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  webHeader: {
-    height: 60,
-    backgroundColor: '#0A0A0A',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    justifyContent: 'space-between',
-  },
-  webHeaderTitle: {
-    flex: 1,
     alignItems: 'center',
   },
   webDrawerContainer: {

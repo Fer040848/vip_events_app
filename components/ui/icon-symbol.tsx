@@ -13,6 +13,7 @@ type IconSymbolName = keyof typeof MAPPING;
  */
 const MAPPING = {
   // Navigation
+  "line.3.horizontal": "menu",
   "house.fill": "home",
   "calendar": "event",
   "calendar.fill": "event",

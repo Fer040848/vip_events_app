@@ -1,9 +1,8 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useColors } from "@/hooks/use-colors";
-import { cn } from "@/lib/utils";
 import * as Haptics from "expo-haptics";
+import { Platform } from "react-native";
 
 interface EventCardEnhancedProps {
   id: number;
@@ -26,10 +25,10 @@ export function EventCardEnhanced({
   onPress,
   isPaid = false,
 }: EventCardEnhancedProps) {
-  const colors = useColors();
-
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     onPress();
   };
 
@@ -37,64 +36,137 @@ export function EventCardEnhanced({
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [
+        styles.pressable,
         {
-          transform: [{ scale: pressed ? 0.95 : 1 }],
-          opacity: pressed ? 0.8 : 1,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
+          opacity: pressed ? 0.9 : 1,
         },
       ]}
     >
       <LinearGradient
-        colors={["#6366F1", "#EC4899"]}
+        colors={["#A08030", "#C9A84C", "#F5D78E"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        className="rounded-2xl overflow-hidden mb-4"
+        style={styles.gradient}
       >
-        <View className="bg-black/20 p-4">
+        <View style={styles.overlay}>
           {image && (
             <Image
               source={{ uri: image }}
-              className="w-full h-40 rounded-lg mb-3"
+              style={styles.image}
               contentFit="cover"
-              style={{ width: "100%", height: 160 }}
             />
           )}
 
-          <View className="gap-2">
-            <View className="flex-row items-start justify-between">
-              <Text className="text-xl font-bold text-white flex-1 pr-2">{name}</Text>
+          <View style={styles.content}>
+            <View style={styles.titleRow}>
+              <Text style={styles.name} numberOfLines={2}>{name}</Text>
               {isPaid && (
-                <View className="bg-green-500 px-2 py-1 rounded-full">
-                  <Text className="text-xs font-semibold text-white">✓ Pagado</Text>
+                <View style={styles.paidBadge}>
+                  <Text style={styles.paidText}>✓ Pagado</Text>
                 </View>
               )}
             </View>
 
-            <View className="gap-1">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-sm text-white/80">📅</Text>
-                <Text className="text-sm text-white/90">{date}</Text>
+            <View style={styles.details}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>📅</Text>
+                <Text style={styles.detailText}>{date}</Text>
               </View>
 
-              <View className="flex-row items-center gap-2">
-                <Text className="text-sm text-white/80">📍</Text>
-                <Text className="text-sm text-white/90">{location}</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>📍</Text>
+                <Text style={styles.detailText}>{location}</Text>
               </View>
 
-              <View className="flex-row items-center gap-2">
-                <Text className="text-sm text-white/80">👥</Text>
-                <Text className="text-sm text-white/90">{attendees} invitados</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>👥</Text>
+                <Text style={styles.detailText}>{attendees} invitados</Text>
               </View>
             </View>
 
-            <Pressable
-              onPress={handlePress}
-              className="bg-white/20 rounded-lg py-2 px-3 mt-2 active:bg-white/30"
-            >
-              <Text className="text-white font-semibold text-center text-sm">Ver detalles</Text>
-            </Pressable>
+            <View style={styles.ctaButton}>
+              <Text style={styles.ctaText}>Ver detalles →</Text>
+            </View>
           </View>
         </View>
       </LinearGradient>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  pressable: {
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  gradient: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    padding: 16,
+  },
+  image: {
+    width: "100%",
+    height: 160,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  content: {
+    gap: 8,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    flex: 1,
+    paddingRight: 8,
+  },
+  paidBadge: {
+    backgroundColor: "#22C55E",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  paidText: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  details: {
+    gap: 4,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  detailIcon: {
+    fontSize: 14,
+  },
+  detailText: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.85)",
+  },
+  ctaButton: {
+    backgroundColor: "#C9A84C",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    alignItems: "center",
+  },
+  ctaText: {
+    color: "#0A0A0A",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+});

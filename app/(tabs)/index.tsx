@@ -11,6 +11,7 @@ import {
   View,
   Animated,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,6 +21,16 @@ import { useAuth } from "@/hooks/use-auth";
 import * as Haptics from "expo-haptics";
 
 const { width } = Dimensions.get("window");
+
+// Colores dorado/negro
+const GOLD = "#C9A84C";
+const GOLD_LIGHT = "#F5D78E";
+const GOLD_DARK = "#A08030";
+const BLACK = "#0A0A0A";
+const DARK_SURFACE = "#1A1A1A";
+const DARK_BORDER = "#2A2A2A";
+const TEXT_PRIMARY = "#F5F5F5";
+const TEXT_MUTED = "#8A8A8A";
 
 function useCountdown(targetDate: Date | null) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
@@ -76,7 +87,7 @@ export default function HomeScreen() {
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.95,
+      toValue: 0.97,
       useNativeDriver: true,
     }).start();
   };
@@ -88,6 +99,12 @@ export default function HomeScreen() {
     }).start();
   };
 
+  const haptic = () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
   return (
     <ScreenContainer containerClassName="bg-background">
       <ScrollView
@@ -97,50 +114,43 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#6366F1"
+            tintColor={GOLD}
           />
         }
       >
-        {/* Header con gradiente */}
-        <LinearGradient
-          colors={["#6366F1", "#EC4899"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.greeting}>Bienvenido de vuelta</Text>
-              <Text style={styles.userName}>{user?.name ?? "Invitado VIP"}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.notifButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(tabs)/profile" as any);
-              }}
-            >
-              <Text style={styles.notifIcon}>🔔</Text>
-              {recentNotifications.length > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{recentNotifications.length}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>Bienvenido</Text>
+            <Text style={styles.userName}>{user?.name ?? "Invitado VIP"}</Text>
           </View>
-        </LinearGradient>
+          <TouchableOpacity
+            style={styles.notifButton}
+            onPress={() => {
+              haptic();
+              router.push("/(tabs)/profile" as any);
+            }}
+          >
+            <Text style={styles.notifIcon}>🔔</Text>
+            {recentNotifications.length > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{recentNotifications.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Featured Event Banner */}
         {isLoading ? (
           <View style={styles.loadingBanner}>
-            <ActivityIndicator color="#6366F1" size="large" />
+            <ActivityIndicator color={GOLD} size="large" />
           </View>
         ) : nextEvent ? (
           <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
             <TouchableOpacity
               style={styles.featuredBanner}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 router.push(`/event/${nextEvent.id}` as any);
               }}
               onPressIn={handlePressIn}
@@ -148,7 +158,7 @@ export default function HomeScreen() {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={["#6366F1", "#EC4899"]}
+                colors={[GOLD_DARK, GOLD, GOLD_LIGHT]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.bannerGradient}
@@ -162,7 +172,7 @@ export default function HomeScreen() {
                 )}
                 <View style={styles.bannerOverlay}>
                   <View style={styles.bannerBadge}>
-                    <Text style={styles.bannerBadgeText}>✨ PRÓXIMO EVENTO</Text>
+                    <Text style={styles.bannerBadgeText}>👑 PRÓXIMO EVENTO</Text>
                   </View>
                   <Text style={styles.bannerTitle}>{nextEvent.title}</Text>
                   <Text style={styles.bannerDate}>
@@ -192,14 +202,14 @@ export default function HomeScreen() {
                   {countdown.expired && (
                     <View style={styles.eventLiveRow}>
                       <View style={styles.liveDot} />
-                      <Text style={styles.liveText}>EN VIVO AHORA 🔴</Text>
+                      <Text style={styles.liveText}>EN VIVO AHORA</Text>
                     </View>
                   )}
 
                   <View style={styles.bannerFooter}>
                     <View>
                       <Text style={styles.bannerPrice}>${nextEvent.price} MXN</Text>
-                      <Text style={styles.bannerLocation}>📍 {nextEvent.location ?? "Lugar por confirmar"}</Text>
+                      <Text style={styles.bannerLocation}>📍 {nextEvent.location ?? "Por confirmar"}</Text>
                     </View>
                     <View style={styles.bannerCTA}>
                       <Text style={styles.bannerCTAText}>Ver detalles →</Text>
@@ -213,7 +223,7 @@ export default function HomeScreen() {
           <View style={styles.noEventBanner}>
             <Text style={styles.noEventIcon}>👑</Text>
             <Text style={styles.noEventText}>No hay eventos próximos</Text>
-            <Text style={styles.noEventSubtext}>¡Mantente atento para nuevas sorpresas!</Text>
+            <Text style={styles.noEventSubtext}>Mantente atento para nuevas sorpresas</Text>
           </View>
         )}
 
@@ -226,28 +236,24 @@ export default function HomeScreen() {
               label="Mi QR"
               sublabel={`${paidInvitations.length} activo(s)`}
               onPress={() => router.push("/(tabs)/my-qr" as any)}
-              gradient={["#6366F1", "#818CF8"]}
             />
             <QuickCard
               icon="📅"
               label="Eventos"
               sublabel="Ver calendario"
               onPress={() => router.push("/(tabs)/events" as any)}
-              gradient={["#EC4899", "#F472B6"]}
             />
             <QuickCard
               icon="🍾"
               label="Servicio VIP"
               sublabel="Pedir ahora"
               onPress={() => router.push("/(tabs)/vip-orders" as any)}
-              gradient={["#10B981", "#34D399"]}
             />
             <QuickCard
               icon="💬"
               label="Chat"
               sublabel="Conectar"
               onPress={() => router.push("/(tabs)/chat" as any)}
-              gradient={["#F59E0B", "#FBBF24"]}
             />
           </View>
         </View>
@@ -271,17 +277,12 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.eventCard}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    haptic();
                     router.push(`/event/${item.id}` as any);
                   }}
                   activeOpacity={0.85}
                 >
-                  <LinearGradient
-                    colors={["#6366F1", "#EC4899"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.eventCardGradient}
-                  >
+                  <View style={styles.eventCardInner}>
                     {item.imageUrl && (
                       <Image
                         source={{ uri: item.imageUrl }}
@@ -296,7 +297,7 @@ export default function HomeScreen() {
                       </Text>
                       <Text style={styles.eventCardPrice}>${item.price} MXN</Text>
                     </View>
-                  </LinearGradient>
+                  </View>
                 </TouchableOpacity>
               )}
             />
@@ -305,8 +306,8 @@ export default function HomeScreen() {
 
         {/* Recent Notifications */}
         {recentNotifications.length > 0 && (
-          <View style={[styles.section, { marginBottom: 24 }]}>
-            <Text style={styles.sectionTitle}>Notificaciones Recientes</Text>
+          <View style={[styles.section, { marginBottom: 32 }]}>
+            <Text style={styles.sectionTitle}>Notificaciones</Text>
             {recentNotifications.map((notif) => (
               <View key={notif.id} style={styles.notifCard}>
                 <View style={styles.notifDot} />
@@ -318,6 +319,8 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </ScreenContainer>
   );
@@ -328,33 +331,26 @@ function QuickCard({
   label,
   sublabel,
   onPress,
-  gradient,
 }: {
   icon: string;
   label: string;
   sublabel: string;
   onPress: () => void;
-  gradient: [string, string];
 }) {
   return (
     <TouchableOpacity
       style={styles.quickCard}
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
       activeOpacity={0.8}
     >
-      <LinearGradient
-        colors={gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.quickCardGradient}
-      >
+      <View style={styles.quickCardInner}>
         <Text style={styles.quickCardIcon}>{icon}</Text>
         <Text style={styles.quickCardLabel}>{label}</Text>
         <Text style={styles.quickCardSublabel}>{sublabel}</Text>
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -362,70 +358,68 @@ function QuickCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F172A",
-  },
-  headerGradient: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    backgroundColor: BLACK,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   greeting: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.7)",
+    color: TEXT_MUTED,
     fontWeight: "500",
   },
   userName: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#FFFFFF",
-    marginTop: 4,
+    color: GOLD,
+    marginTop: 2,
   },
   notifButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: DARK_SURFACE,
+    borderWidth: 1,
+    borderColor: DARK_BORDER,
     justifyContent: "center",
     alignItems: "center",
   },
   notifIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   notifBadge: {
     position: "absolute",
-    top: -8,
-    right: -8,
+    top: -4,
+    right: -4,
     backgroundColor: "#EF4444",
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     justifyContent: "center",
     alignItems: "center",
   },
   notifBadgeText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
   },
   loadingBanner: {
     height: 200,
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 20,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    backgroundColor: DARK_SURFACE,
+    borderWidth: 1,
+    borderColor: DARK_BORDER,
   },
   featuredBanner: {
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 20,
     borderRadius: 20,
     overflow: "hidden",
     height: 280,
@@ -443,23 +437,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
     padding: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
   },
   bannerBadge: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(201, 168, 76, 0.3)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     alignSelf: "flex-start",
-    backdropFilter: "blur(10px)",
+    borderWidth: 1,
+    borderColor: "rgba(201, 168, 76, 0.5)",
   },
   bannerBadgeText: {
-    color: "#FFFFFF",
+    color: GOLD_LIGHT,
     fontSize: 12,
     fontWeight: "bold",
   },
   bannerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "bold",
     color: "#FFFFFF",
     marginTop: 8,
@@ -475,20 +470,22 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   countdownBlock: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    paddingHorizontal: 8,
+    backgroundColor: "rgba(201, 168, 76, 0.2)",
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(201, 168, 76, 0.3)",
   },
   countdownNum: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
-    color: "#FFFFFF",
+    color: GOLD_LIGHT,
   },
   countdownLabel: {
-    fontSize: 10,
-    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 9,
+    color: "rgba(245, 215, 142, 0.7)",
     marginTop: 2,
   },
   eventLiveRow: {
@@ -498,9 +495,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "#EF4444",
   },
   liveText: {
@@ -517,35 +514,33 @@ const styles = StyleSheet.create({
   bannerPrice: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#FFFFFF",
+    color: GOLD_LIGHT,
   },
   bannerLocation: {
     fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginTop: 4,
+    color: "rgba(255, 255, 255, 0.7)",
+    marginTop: 2,
   },
   bannerCTA: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: GOLD,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   bannerCTAText: {
-    color: "#FFFFFF",
-    fontSize: 12,
+    color: BLACK,
+    fontSize: 13,
     fontWeight: "bold",
   },
   noEventBanner: {
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 20,
     paddingVertical: 40,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    backgroundColor: DARK_SURFACE,
     borderWidth: 1,
-    borderColor: "rgba(99, 102, 241, 0.3)",
-    borderStyle: "dashed",
+    borderColor: DARK_BORDER,
   },
   noEventIcon: {
     fontSize: 48,
@@ -554,32 +549,32 @@ const styles = StyleSheet.create({
   noEventText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#F8FAFC",
+    color: TEXT_PRIMARY,
   },
   noEventSubtext: {
     fontSize: 12,
-    color: "rgba(248, 250, 252, 0.6)",
+    color: TEXT_MUTED,
     marginTop: 4,
   },
   section: {
-    marginHorizontal: 16,
-    marginTop: 24,
+    marginHorizontal: 20,
+    marginTop: 28,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#F8FAFC",
-    marginBottom: 12,
+    color: TEXT_PRIMARY,
+    marginBottom: 14,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   seeAll: {
-    fontSize: 12,
-    color: "#6366F1",
+    fontSize: 13,
+    color: GOLD,
     fontWeight: "600",
   },
   quickGrid: {
@@ -590,38 +585,46 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     width: "48%",
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
   },
-  quickCardGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+  quickCardInner: {
+    backgroundColor: DARK_SURFACE,
+    borderWidth: 1,
+    borderColor: DARK_BORDER,
+    borderRadius: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   quickCardIcon: {
-    fontSize: 32,
+    fontSize: 30,
     marginBottom: 8,
   },
   quickCardLabel: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#FFFFFF",
+    color: TEXT_PRIMARY,
   },
   quickCardSublabel: {
     fontSize: 11,
-    color: "rgba(255, 255, 255, 0.7)",
+    color: TEXT_MUTED,
     marginTop: 4,
   },
   eventCard: {
-    width: width - 80,
+    width: width * 0.7,
     borderRadius: 16,
     overflow: "hidden",
-    height: 200,
+    height: 180,
   },
-  eventCardGradient: {
+  eventCardInner: {
     flex: 1,
-    justifyContent: "flex-end",
+    backgroundColor: DARK_SURFACE,
+    borderWidth: 1,
+    borderColor: DARK_BORDER,
+    borderRadius: 16,
+    overflow: "hidden",
   },
   eventCardImage: {
     position: "absolute",
@@ -629,11 +632,13 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   eventCardContent: {
-    padding: 12,
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 14,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   eventCardTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#FFFFFF",
   },
@@ -645,7 +650,7 @@ const styles = StyleSheet.create({
   eventCardPrice: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#F5D78E",
+    color: GOLD_LIGHT,
     marginTop: 4,
   },
   notifCard: {
@@ -653,28 +658,28 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     paddingVertical: 12,
-    paddingHorizontal: 12,
-    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    paddingHorizontal: 14,
+    backgroundColor: DARK_SURFACE,
     borderRadius: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
-    borderLeftColor: "#6366F1",
+    borderLeftColor: GOLD,
   },
   notifDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#6366F1",
+    backgroundColor: GOLD,
     marginTop: 6,
   },
   notifTitle: {
     fontSize: 13,
     fontWeight: "bold",
-    color: "#F8FAFC",
+    color: TEXT_PRIMARY,
   },
   notifBody: {
     fontSize: 12,
-    color: "rgba(248, 250, 252, 0.7)",
+    color: TEXT_MUTED,
     marginTop: 4,
   },
 });
