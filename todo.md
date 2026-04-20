@@ -198,3 +198,32 @@
 - [x] Verificar que pantalla de login mantiene colores dorado/negro
 - [x] Barra de navegación inferior funcional con 5 pestañas (Inicio, Eventos, Mi QR, Chat, Perfil)
 - [x] Verificar compilación sin errores de TypeScript
+
+## Sistema de RSVPs v11
+- [x] Hook useRsvps con AsyncStorage para persistencia local
+- [x] Componente RsvpButton con 3 opciones (Voy, Tal vez, No puedo)
+- [x] Componente RsvpStats para mostrar conteo de respuestas
+- [x] Integración de RSVP en pantalla de detalle de evento
+- [x] Mostrar estadísticas de RSVPs en detalle de evento
+- [ ] Backend: crear tabla rsvps en DB (pendiente por conflicto de migraciones)
+- [ ] Backend: rutas tRPC para sincronizar RSVPs con servidor
+- [ ] Admin: panel para ver RSVPs por evento
+
+## Notificaciones Push Nativas v11
+- [x] Hook useNotifications para registrar permisos y token
+- [x] Configurar listeners para notificaciones en foreground/background
+- [x] Registrar token de push en el servidor
+- [x] Instalación de expo-device
+- [ ] Prueba de notificaciones push en dispositivo físico
+- [ ] Integración de envío de push desde admin
+
+## Revisión Estética v11
+- [x] Revisar coherencia visual en pantalla de inicio
+- [x] Verificar paleta dorado/negro en componentes principales
+- [x] Pantalla de detalle de evento con colores consistentes
+- [x] Componentes de RSVP con colores coherentes
+- [ ] Revisar pantallas de admin (dashboard, eventos, invitados)
+- [ ] Revisar pantalla de chat y perfil
+- [ ] Verificar que todos los componentes usen paleta dorado/negro
+
+

@@ -57,6 +57,21 @@ export type Event = typeof events.$inferSelect;
 export type InsertEvent = typeof events.$inferInsert;
 
 /**
+ * RSVPs table — user responses to events (going, maybe, not going)
+ */
+export const rsvps = mysqlTable("rsvps", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventId: int("eventId").notNull(),
+  status: mysqlEnum("status", ["going", "maybe", "not_going"]).notNull(),
+  respondedAt: timestamp("respondedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Rsvp = typeof rsvps.$inferSelect;
+export type InsertRsvp = typeof rsvps.$inferInsert;
+
+/**
  * Invitations table — QR codes per user per event
  */
 export const invitations = mysqlTable("invitations", {

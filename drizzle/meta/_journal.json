@@ -64,6 +64,20 @@
       "when": 1774309193868,
       "tag": "0008_rich_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1776685994381,
+      "tag": "0009_eager_omega_sentinel",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1776686227235,
+      "tag": "0010_round_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

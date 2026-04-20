@@ -13,11 +13,17 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
+import { useRsvps } from "@/hooks/use-rsvps";
+import { useNotifications } from "@/hooks/use-notifications";
+import { RsvpButton } from "@/components/rsvp-button";
+import { RsvpStats } from "@/components/rsvp-stats";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { rsvpStatus, rsvpCounts, respondToRsvp, loading: rsvpLoading } = useRsvps(Number(id), user?.id || 0);
+  useNotifications();
 
   const { data: event, isLoading } = trpc.events.get.useQuery(
     { id: Number(id) },
@@ -253,6 +259,28 @@ export default function EventDetailScreen() {
               <Text style={styles.guestsText}>
                 Evento exclusivo — máximo {event.maxGuests} invitados
               </Text>
+            </View>
+          )}
+
+          {/* RSVP Section */}
+          {isAuthenticated && (
+            <View style={{ marginTop: 20, marginBottom: 20, paddingHorizontal: 0 }}>
+              <RsvpButton
+                status={rsvpStatus}
+                onPress={respondToRsvp}
+                loading={rsvpLoading}
+              />
+            </View>
+          )}
+
+          {/* RSVP Stats */}
+          {rsvpCounts.going + rsvpCounts.maybe + rsvpCounts.not_going > 0 && (
+            <View style={{ marginBottom: 20, paddingHorizontal: 0 }}>
+              <RsvpStats
+                going={rsvpCounts.going}
+                maybe={rsvpCounts.maybe}
+                notGoing={rsvpCounts.not_going}
+              />
             </View>
           )}
         </View>
