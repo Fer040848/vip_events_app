@@ -388,6 +388,74 @@ export const appRouter = router({
       return db.updateVipOrder(input.id, { status: "cancelled" });
     }),
   }),
+  payments: router({
+    trackClick: protectedProcedure
+      .input(z.object({
+        paymentLinkId: z.number(),
+        userId: z.number(),
+        eventId: z.number(),
+        userAgent: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Placeholder: será implementado con DB
+        return { success: true };
+      }),
+    getLink: publicProcedure
+      .input(z.object({ eventId: z.number() }))
+      .query(async ({ input }) => {
+        // Placeholder: será implementado con DB
+        return null;
+      }),
+    updateLink: protectedProcedure
+      .input(z.object({
+        eventId: z.number(),
+        url: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+        // Placeholder: será implementado con DB
+        return { success: true };
+      }),
+    getClicks: protectedProcedure
+      .input(z.object({ paymentLinkId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+        // Placeholder: será implementado con DB
+        return [];
+      }),
+    submitConfirmation: protectedProcedure
+      .input(z.object({
+        eventId: z.number(),
+        screenshotUrl: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Placeholder: será implementado con DB
+        return { success: true };
+      }),
+    getConfirmations: protectedProcedure
+      .input(z.object({ eventId: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+        // Placeholder: será implementado con DB
+        return [];
+      }),
+    approveConfirmation: protectedProcedure
+      .input(z.object({ confirmationId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+        // Placeholder: será implementado con DB
+        return { success: true };
+      }),
+    rejectConfirmation: protectedProcedure
+      .input(z.object({
+        confirmationId: z.number(),
+        reason: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+        // Placeholder: será implementado con DB
+        return { success: true };
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;
-

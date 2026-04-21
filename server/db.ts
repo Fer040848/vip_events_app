@@ -12,6 +12,9 @@ import {
   userPresence,
   users,
   vipOrders,
+  paymentLinks,
+  paymentLinkClicks,
+  paymentConfirmations,
   type InsertAccessCode,
   type InsertChatMessage,
   type InsertEvent,
@@ -20,6 +23,9 @@ import {
   type InsertUser,
   type InsertUserPresence,
   type InsertVipOrder,
+  type InsertPaymentLink,
+  type InsertPaymentLinkClick,
+  type InsertPaymentConfirmation,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 

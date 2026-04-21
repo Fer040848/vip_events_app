@@ -218,3 +218,55 @@ export const eventPhotos = mysqlTable("event_photos", {
 
 export type EventPhoto = typeof eventPhotos.$inferSelect;
 export type InsertEventPhoto = typeof eventPhotos.$inferInsert;
+
+/**
+ * Payment links — Mercado Pago links managed by admins
+ */
+export const paymentLinks = mysqlTable("payment_links", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  url: text("url").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdBy: int("createdBy").notNull(),
+  updatedBy: int("updatedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PaymentLink = typeof paymentLinks.$inferSelect;
+export type InsertPaymentLink = typeof paymentLinks.$inferInsert;
+
+/**
+ * Payment link clicks — track who clicked payment links
+ */
+export const paymentLinkClicks = mysqlTable("payment_link_clicks", {
+  id: int("id").autoincrement().primaryKey(),
+  paymentLinkId: int("paymentLinkId").notNull(),
+  userId: int("userId").notNull(),
+  eventId: int("eventId").notNull(),
+  clickedAt: timestamp("clickedAt").defaultNow().notNull(),
+  userAgent: text("userAgent"),
+});
+
+export type PaymentLinkClick = typeof paymentLinkClicks.$inferSelect;
+export type InsertPaymentLinkClick = typeof paymentLinkClicks.$inferInsert;
+
+/**
+ * Payment confirmations — users submit screenshots of payment proof
+ */
+export const paymentConfirmations = mysqlTable("payment_confirmations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventId: int("eventId").notNull(),
+  screenshotUrl: text("screenshotUrl").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  rejectionReason: text("rejectionReason"),
+  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+  reviewedBy: int("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PaymentConfirmation = typeof paymentConfirmations.$inferSelect;
+export type InsertPaymentConfirmation = typeof paymentConfirmations.$inferInsert;

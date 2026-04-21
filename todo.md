@@ -227,3 +227,25 @@
 - [ ] Verificar que todos los componentes usen paleta dorado/negro
 
 
+
+## Gestión de Links de Pago y Confirmación v12
+- [x] Schema DB: tabla payment_links (id, eventId, url, createdBy, createdAt, updatedAt, isActive)
+- [x] Schema DB: tabla payment_link_clicks (id, paymentLinkId, userId, clickedAt, ipAddress)
+- [x] Schema DB: tabla payment_confirmations (id, userId, eventId, screenshotUrl, status, confirmedAt, reviewedBy, reviewedAt)
+- [x] Admin: panel para actualizar link de pago (input URL, guardar cambios)
+- [x] Router tRPC: 8 endpoints para pagos (trackClick, getLink, updateLink, getClicks, submitConfirmation, getConfirmations, approveConfirmation, rejectConfirmation)
+- [ ] Admin: historial de links de pago (fecha, URL, quién lo cambió)
+- [ ] Admin: ver quién clickeó el link de pago (usuario, fecha, hora)
+- [ ] Admin: dashboard de confirmaciones de pago (pendientes, aprobadas, rechazadas)
+- [ ] Admin: poder aprobar/rechazar confirmaciones de pago
+- [x] Usuario: interfaz para enviar screenshot de comprobante de pago
+- [ ] Usuario: ver estado de su confirmación de pago
+- [ ] Notificación: alertar a admin cuando usuario envía comprobante
+
+## Protección y Seguridad v12
+- [x] Deshabilitar screenshots en toda la app (expo-screen-capture) - hook useSecurity
+- [x] Bloquear compartir links de WhatsApp, Telegram, etc - hook useSecurity
+- [x] Bloquear copiar texto sensible (links de pago) - hook useSecurity
+- [ ] Verificar que solo usuarios autenticados accedan a la app
+- [ ] Encriptar URLs de pago en tránsito
+- [x] Validar que solo admins puedan ver confirmaciones de pago - validación en tRPC
