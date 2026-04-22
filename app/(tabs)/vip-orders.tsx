@@ -275,14 +275,20 @@ export default function VipOrdersScreen() {
                     </View>
                   </View>
                   <View style={styles.orderCardItems}>
-                    {items.map((itemId) => {
-                      const vipItem = VIP_ITEMS.find((i) => i.id === itemId);
-                      return vipItem ? (
-                        <Text key={itemId} style={styles.orderCardItem}>
-                          {vipItem.emoji} {vipItem.name}
-                        </Text>
-                      ) : null;
-                    })}
+                    {Array.isArray(items) && items.length > 0 ? (
+                      items.map((itemId) => {
+                        const vipItem = VIP_ITEMS.find((i) => i.id === itemId);
+                        return vipItem ? (
+                          <Text key={itemId} style={styles.orderCardItem}>
+                            {vipItem.emoji} {vipItem.name}
+                          </Text>
+                        ) : null;
+                      })
+                    ) : (
+                      <Text style={[styles.orderCardItem, { color: '#999' }]}>
+                        Sin items
+                      </Text>
+                    )}
                   </View>
                 </View>
               );
