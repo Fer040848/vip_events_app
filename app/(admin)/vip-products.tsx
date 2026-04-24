@@ -13,10 +13,15 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { useVIPProducts } from "@/hooks/use-vip-products";
 import { useAuth } from "@/hooks/use-auth";
+import { useColors } from "@/hooks/use-colors";
+import { HamburgerButton } from "@/components/hamburger-button";
+import { AdminSidebar } from "@/components/admin-sidebar";
 import * as Haptics from "expo-haptics";
 
 export default function VIPProductsScreen() {
+  const colors = useColors();
   const { user } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const {
     products,
     loading,
@@ -133,20 +138,20 @@ export default function VIPProductsScreen() {
   };
 
   const renderProductItem = ({ item }: { item: any }) => (
-    <View style={styles.productCard}>
+    <View style={[styles.productCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.productHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.productName}>{item.name}</Text>
-          <Text style={styles.productCategory}>{item.category}</Text>
+          <Text style={[styles.productName, { color: colors.foreground }]}>{item.name}</Text>
+          <Text style={[styles.productCategory, { color: colors.muted }]}>{item.category}</Text>
         </View>
-        <Text style={styles.productPrice}>${item.price}</Text>
+        <Text style={[styles.productPrice, { color: colors.primary }]}>${item.price}</Text>
       </View>
 
-      <Text style={styles.productDescription}>{item.description}</Text>
+      <Text style={[styles.productDescription, { color: colors.muted }]}>{item.description}</Text>
 
       <View style={styles.productActions}>
         <TouchableOpacity
-          style={styles.actionBtn}
+          style={[styles.actionBtn, { backgroundColor: `${colors.primary}20` }]}
           onPress={() => handleEditProduct(item)}
         >
           <Text style={styles.actionBtnText}>✏️ Editar</Text>
@@ -163,22 +168,32 @@ export default function VIPProductsScreen() {
   );
 
   return (
-    <ScreenContainer className="bg-black">
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Gestión de Productos VIP</Text>
+    <ScreenContainer containerClassName="bg-background">
+      {/* Header con botón hamburguesa */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <HamburgerButton onPress={() => setSidebarOpen(true)} />
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>
+          ⭐ Productos VIP
+        </Text>
+        <View style={{ width: 44 }} />
+      </View>
 
+      {/* Sidebar */}
+      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <ScrollView contentContainerStyle={styles.container}>
         {/* Formulario */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {editingId ? "Editar Producto" : "Crear Nuevo Producto"}
           </Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre</Text>
+            <Text style={[styles.label, { color: colors.primary }]}>Nombre</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
               placeholder="Ej: Botella de Champagne"
-              placeholderTextColor="#555"
+              placeholderTextColor={colors.muted}
               value={name}
               onChangeText={setName}
               editable={!creating}
@@ -186,11 +201,11 @@ export default function VIPProductsScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Descripción</Text>
+            <Text style={[styles.label, { color: colors.primary }]}>Descripción</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
               placeholder="Describe el producto..."
-              placeholderTextColor="#555"
+              placeholderTextColor={colors.muted}
               value={description}
               onChangeText={setDescription}
               editable={!creating}
@@ -201,11 +216,11 @@ export default function VIPProductsScreen() {
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>Precio</Text>
+              <Text style={[styles.label, { color: colors.primary }]}>Precio</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
                 placeholder="0.00"
-                placeholderTextColor="#555"
+                placeholderTextColor={colors.muted}
                 value={price}
                 onChangeText={setPrice}
                 editable={!creating}
@@ -214,11 +229,11 @@ export default function VIPProductsScreen() {
             </View>
 
             <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Categoría</Text>
+              <Text style={[styles.label, { color: colors.primary }]}>Categoría</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
                 placeholder="General"
-                placeholderTextColor="#555"
+                placeholderTextColor={colors.muted}
                 value={category}
                 onChangeText={setCategory}
                 editable={!creating}
@@ -227,7 +242,7 @@ export default function VIPProductsScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.submitBtn, creating && styles.submitBtnDisabled]}
+            style={[styles.submitBtn, { backgroundColor: colors.primary }, creating && styles.submitBtnDisabled]}
             onPress={editingId ? handleUpdateProduct : handleCreateProduct}
             disabled={creating}
           >
@@ -242,7 +257,7 @@ export default function VIPProductsScreen() {
 
           {editingId && (
             <TouchableOpacity
-              style={styles.cancelBtn}
+              style={[styles.cancelBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => {
                 setEditingId(null);
                 setName("");
@@ -251,23 +266,23 @@ export default function VIPProductsScreen() {
                 setCategory("");
               }}
             >
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
+              <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Cancelar</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Lista de productos */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Productos Activos ({products.length})
           </Text>
 
           {loading ? (
-            <ActivityIndicator color="#C9A84C" size="large" />
+            <ActivityIndicator color={colors.primary} size="large" />
           ) : error ? (
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           ) : products.length === 0 ? (
-            <Text style={styles.emptyText}>No hay productos creados</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>No hay productos creados</Text>
           ) : (
             <FlatList
               data={products}
@@ -284,16 +299,21 @@ export default function VIPProductsScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
   container: {
     padding: 16,
     paddingBottom: 32,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#C9A84C",
-    marginBottom: 24,
-    letterSpacing: 1,
   },
   section: {
     marginBottom: 32,
@@ -301,7 +321,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#fff",
     marginBottom: 16,
   },
   inputGroup: {
@@ -309,20 +328,16 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: "#C9A84C",
     fontWeight: "600",
     marginBottom: 8,
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: "#1a1a1a",
     borderWidth: 1,
-    borderColor: "#333",
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#fff",
   },
   textArea: {
     paddingVertical: 12,
@@ -332,7 +347,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   submitBtn: {
-    backgroundColor: "#C9A84C",
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
@@ -347,20 +361,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   cancelBtn: {
-    backgroundColor: "#2a2a2a",
     borderRadius: 10,
+    borderWidth: 1,
     paddingVertical: 12,
     alignItems: "center",
   },
   cancelBtnText: {
-    color: "#888",
     fontWeight: "600",
     fontSize: 14,
   },
   productCard: {
-    backgroundColor: "#1a1a1a",
     borderWidth: 1,
-    borderColor: "#333",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -374,21 +385,17 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#fff",
   },
   productCategory: {
     fontSize: 12,
-    color: "#888",
     marginTop: 4,
   },
   productPrice: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#C9A84C",
   },
   productDescription: {
     fontSize: 13,
-    color: "#ccc",
     lineHeight: 18,
     marginBottom: 12,
   },
@@ -400,12 +407,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: "#2a2a2a",
     borderRadius: 8,
     alignItems: "center",
   },
   actionBtnDanger: {
-    backgroundColor: "#3a2a2a",
+    backgroundColor: "#EF444420",
   },
   actionBtnText: {
     fontSize: 12,
@@ -413,12 +419,10 @@ const styles = StyleSheet.create({
     color: "#C9A84C",
   },
   errorText: {
-    color: "#EF4444",
     fontSize: 14,
     textAlign: "center",
   },
   emptyText: {
-    color: "#888",
     fontSize: 14,
     textAlign: "center",
     paddingVertical: 32,

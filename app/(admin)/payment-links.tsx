@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
+import { HamburgerButton } from '@/components/hamburger-button';
+import { AdminSidebar } from '@/components/admin-sidebar';
 import { trpc } from '@/lib/trpc';
 
 export default function PaymentLinksScreen() {
   const colors = useColors();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [newUrl, setNewUrl] = useState('');
 

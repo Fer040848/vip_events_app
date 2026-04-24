@@ -249,3 +249,15 @@
 - [ ] Verificar que solo usuarios autenticados accedan a la app
 - [ ] Encriptar URLs de pago en tránsito
 - [x] Validar que solo admins puedan ver confirmaciones de pago - validación en tRPC
+
+## Restructuración Panel de Admin v13
+- [x] Crear sidebar lateral con navegación para admin
+- [x] Crear componente HamburgerButton para abrir sidebar
+- [x] Integrar sidebar en pantalla de Productos VIP
+- [x] Integrar sidebar en pantalla de Links de Pago
+- [x] Crear CRUD de productos VIP en admin (ya existe)
+- [ ] Integrar visualización de pedidos VIP en admin
+- [ ] Asegurar que link de pago aparezca en pantalla de compra de boletos
+- [ ] Asegurar que productos VIP creados aparezcan en pantalla de usuario
+- [x] Admin puede editar y borrar productos VIP existentes
+- [ ] Admin puede ver todos los pedidos VIP de usuarios
