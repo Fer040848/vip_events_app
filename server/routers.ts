@@ -462,8 +462,37 @@ export const appRouter = router({
           screenshotUrl: proof.url,
           status: "pending",
         });
-        return { success: true, confirmationId };
+        const adminTokens = await db.getAdminPushTokens();
+        if (adminTokens.length > 0) {
+          const messages = adminTokens.map((token) => ({
+            to: token,
+            title: "Nuevo comprobante de pago",
+            body: `${ctx.user.name ?? "Un miembro"} envió un comprobante para revisión.`,
+            data: { type: "payment_confirmation", confirmationId, eventId: input.eventId },
+            sound: "default" as const,
+            priority: "high" as const,
+          }));
+          try {
+            await Promise.all(
+              Array.from({ length: Math.ceil(messages.length / 100) }, (_, index) =>
+                fetch("https://exp.host/--/api/v2/push/send", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                  body: JSON.stringify(messages.slice(index * 100, index * 100 + 100)),
+                }),
+              ),
+            );
+          } catch (error) {
+            console.error("[Payments] Could not send admin push alert", error);
+          }
+        }
+        return { success: true, confirmationId, adminAlertsSent: adminTokens.length };
       }),
+    myConfirmations: protectedProcedure.query(({ ctx }) => db.getPaymentConfirmationsForUser(ctx.user.id)),
+    pendingConfirmationCount: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+      return { count: await db.getPendingPaymentConfirmationCount() };
+    }),
     getConfirmations: protectedProcedure
       .input(z.object({ eventId: z.number().optional() }))
       .query(async ({ ctx, input }) => {

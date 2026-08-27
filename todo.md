@@ -265,3 +265,11 @@
 - [x] Reemplazar pestañas inferiores por navegación lateral uniforme en todas las pantallas de administración
 - [x] Quitar las acciones de WhatsApp y compartir del QR para evitar divulgar accesos privados
 - [x] Registrar el clic del miembro antes de abrir el link de pago configurado por el administrador
+
+## Operación de Pagos y Pedidos v14
+- [x] Alertar de inmediato al panel administrativo cuando llegue un comprobante de pago
+- [x] Añadir un indicador de comprobantes pendientes en el menú administrativo
+- [x] Filtrar pedidos VIP por fecha dentro del panel administrativo
+- [x] Exportar todos los pedidos VIP filtrados a un archivo CSV
+- [x] Mostrar en el perfil del usuario el estado de revisión de sus comprobantes
+- [x] Validar los flujos de alertas, filtros, exportación y estado de comprobantes

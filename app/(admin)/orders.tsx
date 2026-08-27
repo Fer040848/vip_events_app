@@ -1,15 +1,19 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { createVipOrdersCsv } from "@/lib/vip-order-export";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
   pending: { label: "Pendiente", color: "#F39C12", bg: "#F39C1222", icon: "⏳" },
@@ -19,9 +23,18 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 const STATUS_ORDER = ["pending", "confirmed", "delivered", "cancelled"] as const;
+const DATE_RANGES = [
+  { id: "all", label: "Todo" },
+  { id: "today", label: "Hoy" },
+  { id: "7d", label: "7 días" },
+  { id: "30d", label: "30 días" },
+] as const;
+type DateRange = (typeof DATE_RANGES)[number]["id"];
 
 export default function AdminOrdersScreen() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRange>("all");
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: orders, isLoading, refetch } = trpc.vipOrders.getAllOrders.useQuery(undefined, {
     refetchInterval: 10000, // Poll every 10s
@@ -49,11 +62,65 @@ export default function AdminOrdersScreen() {
     );
   };
 
-  const filteredOrders = orders?.filter((o) =>
-    filterStatus === "all" ? true : o.status === filterStatus
-  ) ?? [];
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const minimumDate = new Date(todayStart);
+    if (dateRange === "7d") minimumDate.setDate(minimumDate.getDate() - 6);
+    if (dateRange === "30d") minimumDate.setDate(minimumDate.getDate() - 29);
+
+    return (orders ?? []).filter((order) => {
+      const orderDate = new Date(order.createdAt);
+      const inRange = dateRange === "all"
+        ? true
+        : dateRange === "today"
+          ? orderDate >= todayStart
+          : orderDate >= minimumDate;
+      return inRange && (filterStatus === "all" || order.status === filterStatus);
+    });
+  }, [dateRange, filterStatus, orders]);
 
   const pendingCount = orders?.filter((o) => o.status === "pending").length ?? 0;
+
+  const exportOrders = async (ordersToExport: typeof filteredOrders, fileScope: "vista" | "completo") => {
+    if (ordersToExport.length === 0) {
+      Alert.alert("Sin pedidos", "No hay pedidos para exportar con este filtro.");
+      return;
+    }
+
+    setIsExporting(true);
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const fileName = `afterroom-pedidos-${fileScope}-${dateStamp}.csv`;
+    const csv = createVipOrdersCsv(ordersToExport, products);
+
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = fileName;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            dialogTitle: "Exportar pedidos VIP",
+            mimeType: "text/csv",
+            UTI: "public.comma-separated-values-text",
+          });
+        } else {
+          Alert.alert("Exportación lista", `El archivo ${fileName} quedó preparado en el dispositivo.`);
+        }
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo generar el archivo CSV.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <ScreenContainer containerClassName="bg-background">
@@ -95,6 +162,38 @@ export default function AdminOrdersScreen() {
               </TouchableOpacity>
             );
           })}
+        </View>
+
+        <View style={styles.dateFilterSection}>
+          <Text style={styles.dateFilterLabel}>Filtrar por fecha</Text>
+          <View style={styles.dateFilterRow}>
+            {DATE_RANGES.map((range) => (
+              <TouchableOpacity
+                key={range.id}
+                style={[styles.dateFilter, dateRange === range.id && styles.dateFilterActive]}
+                onPress={() => setDateRange(range.id)}
+              >
+                <Text style={[styles.dateFilterText, dateRange === range.id && styles.dateFilterTextActive]}>{range.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.exportRow}>
+          <TouchableOpacity
+            style={[styles.exportButton, (isExporting || filteredOrders.length === 0) && styles.exportButtonDisabled]}
+            onPress={() => exportOrders(filteredOrders, "vista")}
+            disabled={isExporting || filteredOrders.length === 0}
+          >
+            <Text style={styles.exportButtonText}>{isExporting ? "Generando..." : `Exportar vista (${filteredOrders.length})`}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.exportAllButton, (isExporting || !orders?.length) && styles.exportButtonDisabled]}
+            onPress={() => exportOrders(orders ?? [], "completo")}
+            disabled={isExporting || !orders?.length}
+          >
+            <Text style={styles.exportAllButtonText}>CSV completo</Text>
+          </TouchableOpacity>
         </View>
 
         {isLoading ? (
@@ -271,6 +370,76 @@ const styles = StyleSheet.create({
   },
   filterTabTextActive: {
     color: "#C9A84C",
+  },
+  dateFilterSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+  },
+  dateFilterLabel: {
+    color: "#8A7A5A",
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  dateFilterRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  dateFilter: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 8,
+    paddingVertical: 8,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  dateFilterActive: {
+    backgroundColor: "#C9A84C22",
+    borderColor: "#C9A84C",
+  },
+  dateFilterText: {
+    color: "#8A7A5A",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  dateFilterTextActive: {
+    color: "#C9A84C",
+  },
+  exportRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 6,
+  },
+  exportButton: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 10,
+    paddingVertical: 11,
+    backgroundColor: "#C9A84C",
+  },
+  exportButtonText: {
+    color: "#0A0A0A",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  exportAllButton: {
+    alignItems: "center",
+    borderRadius: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#C9A84C55",
+  },
+  exportAllButtonText: {
+    color: "#C9A84C",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  exportButtonDisabled: {
+    opacity: 0.45,
   },
   emptyState: {
     alignItems: "center",

@@ -345,6 +345,35 @@ export async function getPaymentConfirmations(eventId?: number) {
     .orderBy(desc(paymentConfirmations.submittedAt));
 }
 
+export async function getPaymentConfirmationsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: paymentConfirmations.id,
+      eventId: paymentConfirmations.eventId,
+      status: paymentConfirmations.status,
+      rejectionReason: paymentConfirmations.rejectionReason,
+      submittedAt: paymentConfirmations.submittedAt,
+      reviewedAt: paymentConfirmations.reviewedAt,
+      eventTitle: events.title,
+    })
+    .from(paymentConfirmations)
+    .leftJoin(events, eq(paymentConfirmations.eventId, events.id))
+    .where(eq(paymentConfirmations.userId, userId))
+    .orderBy(desc(paymentConfirmations.submittedAt));
+}
+
+export async function getPendingPaymentConfirmationCount() {
+  const db = await getDb();
+  if (!db) return 0;
+  const pending = await db
+    .select({ id: paymentConfirmations.id })
+    .from(paymentConfirmations)
+    .where(eq(paymentConfirmations.status, "pending"));
+  return pending.length;
+}
+
 export async function reviewPaymentConfirmation(
   confirmationId: number,
   adminId: number,
@@ -570,6 +599,16 @@ export async function getPushTokensByUserIds(userIds: number[]): Promise<string[
   const { inArray } = await import("drizzle-orm");
   const result = await db.select({ pushToken: users.pushToken }).from(users).where(inArray(users.id, userIds));
   return result.map((r) => r.pushToken!).filter(Boolean);
+}
+
+export async function getAdminPushTokens(): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db
+    .select({ pushToken: users.pushToken })
+    .from(users)
+    .where(and(eq(users.role, "admin"), isNotNull(users.pushToken)));
+  return result.map((row) => row.pushToken!).filter(Boolean);
 }
 
 // ============================================================

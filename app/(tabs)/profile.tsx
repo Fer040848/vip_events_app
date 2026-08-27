@@ -18,6 +18,13 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import * as Haptics from "expo-haptics";
 
+const PAYMENT_PROOF_STATUS = {
+  pending: { title: "Comprobante en revisión", detail: "Un administrador revisará tu comprobante pronto.", color: "#C9A84C", icon: "◷" },
+  approved: { title: "Comprobante aprobado", detail: "Tu entrada quedó activada.", color: "#4CAF7D", icon: "✓" },
+  rejected: { title: "Comprobante rechazado", detail: "Envía un nuevo comprobante para continuar.", color: "#D96B6B", icon: "!" },
+  none: { title: "Sin comprobante enviado", detail: "Envía tu comprobante para activar tu entrada.", color: "#8A7A5A", icon: "·" },
+} as const;
+
 export default function ProfileScreen() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -59,6 +66,10 @@ export default function ProfileScreen() {
   const { data: unreadData } = trpc.notifications.unreadCount.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const { data: myConfirmations = [] } = trpc.payments.myConfirmations.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: 10000,
+  });
 
   const markRead = trpc.notifications.markRead.useMutation({
     onSuccess: () => refetchNotifs(),
@@ -86,6 +97,12 @@ export default function ProfileScreen() {
 
   const unreadCount = (unreadData as any)?.count ?? 0;
   const paidCount = myInvitations?.filter((i) => i.status === "paid" || i.status === "checked_in").length ?? 0;
+  const latestConfirmation = myConfirmations[0];
+  const proofStatusKey = myConfirmations.length > 0 ? latestConfirmation.status : "none";
+  const proofStatus = PAYMENT_PROOF_STATUS[proofStatusKey];
+  const payableEventId = proofStatusKey === "rejected"
+    ? latestConfirmation.eventId
+    : myInvitations?.find((invitation) => invitation.status === "pending")?.eventId;
 
   return (
     <ScreenContainer containerClassName="bg-background">
@@ -163,6 +180,28 @@ export default function ProfileScreen() {
             <Text style={styles.statNumber}>{unreadCount}</Text>
             <Text style={styles.statLabel}>Notif. nuevas</Text>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Comprobante de pago</Text>
+          <View style={[styles.proofStatusCard, { borderColor: `${proofStatus.color}66` }]}>
+            <View style={[styles.proofStatusIcon, { backgroundColor: `${proofStatus.color}20` }]}>
+              <Text style={[styles.proofStatusIconText, { color: proofStatus.color }]}>{proofStatus.icon}</Text>
+            </View>
+            <View style={styles.proofStatusContent}>
+              <Text style={[styles.proofStatusTitle, { color: proofStatus.color }]}>{proofStatus.title}</Text>
+              <Text style={styles.proofStatusDetail}>{latestConfirmation?.eventTitle ?? proofStatus.detail}</Text>
+              {latestConfirmation?.rejectionReason ? <Text style={styles.proofRejectionReason}>{latestConfirmation.rejectionReason}</Text> : null}
+            </View>
+          </View>
+          {(proofStatusKey === "none" || proofStatusKey === "rejected") && payableEventId ? (
+            <TouchableOpacity
+              style={styles.proofAction}
+              onPress={() => router.push({ pathname: "/(tabs)/payment-confirmation", params: { eventId: payableEventId.toString() } } as any)}
+            >
+              <Text style={styles.proofActionText}>{proofStatusKey === "rejected" ? "Enviar nuevo comprobante" : "Enviar comprobante"}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Notifications Section */}
@@ -375,6 +414,56 @@ const styles = StyleSheet.create({
     color: "#8A7A5A",
     textAlign: "center",
     fontWeight: "600",
+  },
+  proofStatusCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+  },
+  proofStatusIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  proofStatusIconText: {
+    fontSize: 23,
+    fontWeight: "800",
+  },
+  proofStatusContent: {
+    flex: 1,
+    gap: 3,
+  },
+  proofStatusTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  proofStatusDetail: {
+    color: "#8A7A5A",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  proofRejectionReason: {
+    color: "#D96B6B",
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  proofAction: {
+    alignItems: "center",
+    backgroundColor: "#C9A84C",
+    borderRadius: 10,
+    marginTop: 10,
+    paddingVertical: 11,
+  },
+  proofActionText: {
+    color: "#0A0A0A",
+    fontSize: 13,
+    fontWeight: "800",
   },
   section: {
     paddingHorizontal: 20,

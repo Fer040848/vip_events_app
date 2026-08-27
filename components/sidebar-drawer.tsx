@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { trpc } from '@/lib/trpc';
 
 interface MenuItem {
   label: string;
@@ -18,6 +19,11 @@ interface SidebarDrawerProps {
 export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: pendingConfirmationData } = trpc.payments.pendingConfirmationCount.useQuery(undefined, {
+    enabled: isAdmin,
+    refetchInterval: 5000,
+  });
+  const pendingConfirmationCount = pendingConfirmationData?.count ?? 0;
 
   const userMenuItems: MenuItem[] = [
     { label: 'Inicio', icon: 'house.fill', route: '/(tabs)' },
@@ -35,6 +41,7 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
     { label: 'Productos VIP', icon: 'crown.fill', route: '/(admin)/vip-products', adminOnly: true },
     { label: 'Pedidos VIP', icon: 'bag.fill', route: '/(admin)/orders', adminOnly: true },
     { label: 'Links de pago', icon: 'creditcard.fill', route: '/(admin)/payment-links', adminOnly: true },
+    { label: 'Notificaciones', icon: 'bell.fill', route: '/(admin)/notifications', adminOnly: true },
     { label: 'Confirmaciones', icon: 'checkmark.circle.fill', route: '/(admin)/payments', adminOnly: true },
     { label: 'Códigos', icon: 'key.fill', route: '/(admin)/access-codes', adminOnly: true },
     { label: 'Chat', icon: 'bubble.left.and.bubble.right.fill', route: '/(admin)/chat' },
@@ -84,7 +91,11 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
             <Text style={[styles.menuLabel, isActive(item.route) && styles.menuLabelActive]}>
               {item.label}
             </Text>
-            {item.adminOnly && (
+            {item.route === '/(admin)/payments' && pendingConfirmationCount > 0 ? (
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>{pendingConfirmationCount > 99 ? '99+' : pendingConfirmationCount}</Text>
+              </View>
+            ) : item.adminOnly && (
               <View style={styles.adminBadge}>
                 <Text style={styles.adminBadgeText}>👑</Text>
               </View>
@@ -185,6 +196,20 @@ const styles = StyleSheet.create({
   },
   adminBadgeText: {
     fontSize: 12,
+  },
+  pendingBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: '#C9A84C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingBadgeText: {
+    color: '#0A0A0A',
+    fontSize: 11,
+    fontWeight: '800',
   },
   footer: {
     paddingVertical: 16,

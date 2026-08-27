@@ -42,4 +42,24 @@ describe("contratos de acceso privado y administración", () => {
     const rootLayout = source("app/_layout.tsx");
     expect(rootLayout).toContain("useScreenProtection()");
   });
+
+  it("alerta solo a administradores y expone el contador de comprobantes pendientes", () => {
+    const router = source("server/routers.ts");
+    const drawer = source("components/sidebar-drawer.tsx");
+    const adminNotifications = source("app/(admin)/notifications.tsx");
+
+    expect(router).toContain("getAdminPushTokens()");
+    expect(router).toContain("pendingConfirmationCount: protectedProcedure");
+    expect(drawer).toContain("pendingConfirmationCount.useQuery");
+    expect(adminNotifications).toContain("Comprobantes por revisar");
+  });
+
+  it("permite a cada miembro consultar únicamente el estado de sus propios comprobantes", () => {
+    const router = source("server/routers.ts");
+    const profile = source("app/(tabs)/profile.tsx");
+
+    expect(router).toContain("myConfirmations: protectedProcedure.query(({ ctx }) => db.getPaymentConfirmationsForUser(ctx.user.id))");
+    expect(profile).toContain("PAYMENT_PROOF_STATUS");
+    expect(profile).toContain("trpc.payments.myConfirmations.useQuery");
+  });
 });

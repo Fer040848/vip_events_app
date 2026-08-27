@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { useRouter } from "expo-router";
 
 const NOTIFICATION_TYPES = [
   { id: "general", label: "General", icon: "📢" },
@@ -21,6 +22,7 @@ const NOTIFICATION_TYPES = [
 ] as const;
 
 export default function AdminNotificationsScreen() {
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [selectedType, setSelectedType] = useState<
@@ -32,6 +34,10 @@ export default function AdminNotificationsScreen() {
 
   const { data: events } = trpc.events.listAll.useQuery();
   const { data: notifications, refetch } = trpc.notifications.list.useQuery();
+  const { data: pendingConfirmationData } = trpc.payments.pendingConfirmationCount.useQuery(undefined, {
+    refetchInterval: 5000,
+  });
+  const pendingConfirmationCount = pendingConfirmationData?.count ?? 0;
 
   const sendNotification = trpc.notifications.send.useMutation({
     onSuccess: () => refetch(),
@@ -100,6 +106,24 @@ export default function AdminNotificationsScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={styles.formSection}>
+              {pendingConfirmationCount > 0 && (
+                <TouchableOpacity
+                  style={styles.paymentAlert}
+                  onPress={() => router.push("/(admin)/payments" as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.paymentAlertIconWrap}>
+                    <Text style={styles.paymentAlertIcon}>💳</Text>
+                  </View>
+                  <View style={styles.paymentAlertTextWrap}>
+                    <Text style={styles.paymentAlertTitle}>Comprobantes por revisar</Text>
+                    <Text style={styles.paymentAlertSubtitle}>
+                      {pendingConfirmationCount} {pendingConfirmationCount === 1 ? "nuevo comprobante requiere" : "nuevos comprobantes requieren"} tu revisión
+                    </Text>
+                  </View>
+                  <Text style={styles.paymentAlertChevron}>›</Text>
+                </TouchableOpacity>
+              )}
               {/* Compose Form */}
               <Text style={styles.sectionTitle}>Enviar nueva notificación</Text>
 
@@ -314,6 +338,46 @@ const styles = StyleSheet.create({
   formSection: {
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  paymentAlert: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#C9A84C77",
+    borderRadius: 14,
+    backgroundColor: "#C9A84C18",
+    padding: 14,
+    marginBottom: 22,
+  },
+  paymentAlertIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#C9A84C33",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paymentAlertIcon: {
+    fontSize: 18,
+  },
+  paymentAlertTextWrap: {
+    flex: 1,
+  },
+  paymentAlertTitle: {
+    color: "#F5E6C8",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  paymentAlertSubtitle: {
+    color: "#C9A84C",
+    fontSize: 12,
+    marginTop: 3,
+  },
+  paymentAlertChevron: {
+    color: "#C9A84C",
+    fontSize: 28,
+    lineHeight: 28,
   },
   sectionTitle: {
     fontSize: 17,
