@@ -1,145 +1,167 @@
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { DrawerLayoutAndroid, GestureHandlerRootView } from "react-native-gesture-handler";
 import { Tabs, useRouter } from "expo-router";
-import { useEffect } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Platform } from "react-native";
 
-import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { SidebarDrawer } from "@/components/sidebar-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 
+const DRAWER_WIDTH = 280;
+
 export default function AdminLayout() {
-  const insets = useSafeAreaInsets();
-  const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = 56 + bottomPadding;
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
+  const drawerRef = useRef<DrawerLayoutAndroid>(null);
+  const [webDrawerOpen, setWebDrawerOpen] = useState(false);
+  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: isAuthenticated });
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.replace("/login" as any);
     }
-  }, [isAuthenticated, loading]);
+  }, [isAuthenticated, loading, router]);
 
   useEffect(() => {
-    if (!loading && isAuthenticated && me && (me as any)?.role !== "admin") {
+    const role = (me as { role?: string } | undefined)?.role ?? (user as { role?: string } | null)?.role;
+    if (!loading && isAuthenticated && role && role !== "admin") {
       router.replace("/(tabs)" as any);
     }
-  }, [isAuthenticated, loading, me]);
+  }, [isAuthenticated, loading, me, router, user]);
 
-  return (
+  const toggleWebDrawer = () => {
+    const willOpen = !webDrawerOpen;
+    setWebDrawerOpen(willOpen);
+    Animated.timing(slideAnim, {
+      toValue: willOpen ? 0 : -DRAWER_WIDTH,
+      duration: 260,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeDrawer = () => {
+    if (Platform.OS === "web") {
+      if (webDrawerOpen) toggleWebDrawer();
+      return;
+    }
+    drawerRef.current?.closeDrawer();
+  };
+
+  const openDrawer = () => {
+    if (Platform.OS === "web") {
+      toggleWebDrawer();
+      return;
+    }
+    drawerRef.current?.openDrawer();
+  };
+
+  const renderDrawer = () => <SidebarDrawer isAdmin onClose={closeDrawer} />;
+
+  const adminContent = (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#C9A84C",
-        tabBarInactiveTintColor: "#8A7A5A",
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          paddingTop: 8,
-          paddingBottom: bottomPadding,
-          height: tabBarHeight,
-          backgroundColor: "#0A0A0A",
-          borderTopColor: "#C9A84C22",
-          borderTopWidth: 1,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          letterSpacing: 0.3,
-        },
+        headerShown: true,
+        headerStyle: styles.header,
+        headerTintColor: "#C9A84C",
+        headerTitleStyle: styles.headerTitle,
+        headerLeft: () => (
+          <TouchableOpacity style={styles.menuButton} onPress={openDrawer} activeOpacity={0.7}>
+            <IconSymbol name="line.3.horizontal" size={24} color="#C9A84C" />
+          </TouchableOpacity>
+        ),
+        tabBarStyle: styles.hiddenTabBar,
       }}
     >
-      {/* Dashboard - Principal */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="chart.bar.fill" color={color} />,
-        }}
-      />
-
-      {/* Eventos - Gestión de eventos */}
-      <Tabs.Screen
-        name="events"
-        options={{
-          title: "Eventos",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="calendar" color={color} />,
-        }}
-      />
-
-      {/* Invitados - Gestión de pagos y asistencia */}
-      <Tabs.Screen
-        name="guests"
-        options={{
-          title: "Invitados",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.2.fill" color={color} />,
-        }}
-      />
-
-      {/* Chat - Comunicación en tiempo real */}
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: "Chat",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="bubble.left.and.bubble.right.fill" color={color} />,
-        }}
-      />
-
-      {/* Las siguientes pantallas no aparecen en el tab bar pero son accesibles desde el menú lateral */}
-      {/* Scan - Escanear QR */}
-      <Tabs.Screen
-        name="scan"
-        options={{
-          href: null, // Ocultar del tab bar
-          title: "Escanear",
-        }}
-      />
-
-      {/* Notifications - Notificaciones */}
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          href: null, // Ocultar del tab bar
-          title: "Notificaciones",
-        }}
-      />
-
-      {/* Orders - Pedidos/Órdenes */}
-      <Tabs.Screen
-        name="orders"
-        options={{
-          href: null, // Ocultar del tab bar
-          title: "Pedidos",
-        }}
-      />
-
-      {/* Access Codes - Generación de códigos (solo admin) */}
-      <Tabs.Screen
-        name="access-codes"
-        options={{
-          href: null, // Ocultar del tab bar
-          title: "Códigos",
-        }}
-      />
-
-      {/* Payments - Gestión de pagos (solo admin) */}
-      <Tabs.Screen
-        name="payments"
-        options={{
-          href: null, // Ocultar del tab bar
-          title: "Pagos",
-        }}
-      />
-
-      {/* VIP Products - Editar productos VIP (solo admin) */}
-      <Tabs.Screen
-        name="vip-products"
-        options={{
-          href: null, // Ocultar del tab bar
-          title: "Productos VIP",
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: "Panel de Administración", headerTitle: "After Room · Admin" }} />
+      <Tabs.Screen name="events" options={{ title: "Eventos" }} />
+      <Tabs.Screen name="events-edit" options={{ title: "Editar evento" }} />
+      <Tabs.Screen name="guests" options={{ title: "Invitados" }} />
+      <Tabs.Screen name="vip-products" options={{ title: "Productos VIP" }} />
+      <Tabs.Screen name="vip-products-edit" options={{ title: "Editar productos VIP" }} />
+      <Tabs.Screen name="orders" options={{ title: "Pedidos VIP" }} />
+      <Tabs.Screen name="payment-links" options={{ title: "Links de pago" }} />
+      <Tabs.Screen name="payments" options={{ title: "Confirmaciones de pago" }} />
+      <Tabs.Screen name="access-codes" options={{ title: "Códigos de acceso" }} />
+      <Tabs.Screen name="generate-codes" options={{ title: "Generar códigos" }} />
+      <Tabs.Screen name="scan" options={{ title: "Escanear QR" }} />
+      <Tabs.Screen name="notifications" options={{ title: "Notificaciones" }} />
+      <Tabs.Screen name="chat" options={{ title: "Chat administrativo" }} />
     </Tabs>
   );
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={styles.root}>
+        {webDrawerOpen && (
+          <TouchableOpacity style={styles.webBackdrop} onPress={closeDrawer} activeOpacity={1} />
+        )}
+        <Animated.View
+          style={[styles.webDrawerContainer, { transform: [{ translateX: slideAnim }] }]}
+        >
+          {renderDrawer()}
+        </Animated.View>
+        {adminContent}
+      </View>
+    );
+  }
+
+  return (
+    <GestureHandlerRootView style={styles.root}>
+      <DrawerLayoutAndroid
+        ref={drawerRef}
+        drawerWidth={DRAWER_WIDTH}
+        drawerPosition="left"
+        drawerLockMode="unlocked"
+        renderNavigationView={renderDrawer}
+      >
+        {adminContent}
+      </DrawerLayoutAndroid>
+    </GestureHandlerRootView>
+  );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#0A0A0A",
+  },
+  header: {
+    backgroundColor: "#0A0A0A",
+  },
+  headerTitle: {
+    color: "#C9A84C",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  menuButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  hiddenTabBar: {
+    display: "none",
+  },
+  webBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.58)",
+    zIndex: 100,
+  },
+  webDrawerContainer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: DRAWER_WIDTH,
+    backgroundColor: "#0A0A0A",
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    zIndex: 101,
+  },
+});

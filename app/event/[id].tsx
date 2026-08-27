@@ -32,6 +32,14 @@ export default function EventDetailScreen() {
   const { data: myInvitations } = trpc.invitations.myInvitations.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const openPaymentLink = trpc.payments.openLink.useMutation({
+    onSuccess: ({ url }) => {
+      Linking.openURL(url).catch(() => {
+        Alert.alert("Pago", "No fue posible abrir el enlace de pago.");
+      });
+    },
+    onError: (error) => Alert.alert("Pago", error.message),
+  });
 
   const createInvitation = trpc.invitations.create.useMutation({
     onSuccess: (data) => {
@@ -42,9 +50,7 @@ export default function EventDetailScreen() {
           {
             text: "Ir a pagar",
             onPress: () => {
-              if (event?.mercadoPagoLink) {
-                Linking.openURL(event.mercadoPagoLink);
-              }
+              openPaymentLink.mutate({ eventId: Number(id), userAgent: "afterroommx-mobile" });
               router.push("/(tabs)/my-qr" as any);
             },
           },
@@ -74,11 +80,7 @@ export default function EventDetailScreen() {
         return;
       }
       // Already has invitation, just go to pay
-      if (event?.mercadoPagoLink) {
-        Linking.openURL(event.mercadoPagoLink);
-      } else {
-        Alert.alert("Pago", "El enlace de pago estará disponible pronto.");
-      }
+      openPaymentLink.mutate({ eventId: Number(id), userAgent: "afterroommx-mobile" });
       return;
     }
     // Create new invitation - generate a unique QR code

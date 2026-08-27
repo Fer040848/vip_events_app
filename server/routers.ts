@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { storagePut } from "./storage";
 
 export const appRouter = router({
   system: systemRouter,
@@ -350,10 +351,7 @@ export const appRouter = router({
     ),
   }),
   vipProducts: router({
-    list: protectedProcedure.query(({ ctx }) => {
-      if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-      return db.getAllVipOrders();
-    }),
+    list: protectedProcedure.query(() => db.getVipProducts()),
     create: protectedProcedure.input(z.object({
       name: z.string().min(1).max(255),
       description: z.string().optional(),
@@ -361,12 +359,10 @@ export const appRouter = router({
       category: z.string().optional(),
     })).mutation(({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-      return db.createVipOrder({
-        userId: ctx.user.id,
-        eventId: 0,
-        invitationId: 0,
-        items: JSON.stringify(input),
-        status: "pending",
+      return db.createVipProduct({
+        ...input,
+        price: input.price.toFixed(2),
+        createdBy: ctx.user.id,
       });
     }),
     update: protectedProcedure.input(z.object({
@@ -379,32 +375,56 @@ export const appRouter = router({
     })).mutation(({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new Error("Unauthorized");
       const { id, ...updates } = input;
-      return db.updateVipOrder(id, { items: JSON.stringify(updates) });
+      const { status: _status, ...productUpdates } = updates;
+      return db.updateVipProduct(id, {
+        ...productUpdates,
+        price: productUpdates.price?.toFixed(2),
+      });
     }),
     delete: protectedProcedure.input(z.object({
       id: z.number(),
     })).mutation(({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-      return db.updateVipOrder(input.id, { status: "cancelled" });
+      return db.archiveVipProduct(input.id);
     }),
   }),
   payments: router({
     trackClick: protectedProcedure
       .input(z.object({
         paymentLinkId: z.number(),
-        userId: z.number(),
         eventId: z.number(),
         userAgent: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
-        // Placeholder: será implementado con DB
+      .mutation(async ({ ctx, input }) => {
+        await db.recordPaymentLinkClick({
+          paymentLinkId: input.paymentLinkId,
+          eventId: input.eventId,
+          userId: ctx.user.id,
+          userAgent: input.userAgent,
+        });
         return { success: true };
       }),
-    getLink: publicProcedure
+    getLink: protectedProcedure
       .input(z.object({ eventId: z.number() }))
-      .query(async ({ input }) => {
-        // Placeholder: será implementado con DB
-        return null;
+      .query(({ input }) => db.getActivePaymentLinkByEvent(input.eventId)),
+    getHistory: protectedProcedure
+      .input(z.object({ eventId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new Error("Unauthorized");
+        return db.getPaymentLinkHistory(input.eventId);
+      }),
+    openLink: protectedProcedure
+      .input(z.object({ eventId: z.number(), userAgent: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const link = await db.getActivePaymentLinkByEvent(input.eventId);
+        if (!link) throw new Error("El enlace de pago estará disponible pronto.");
+        await db.recordPaymentLinkClick({
+          paymentLinkId: link.id,
+          eventId: input.eventId,
+          userId: ctx.user.id,
+          userAgent: input.userAgent,
+        });
+        return { url: link.url };
       }),
     updateLink: protectedProcedure
       .input(z.object({
@@ -413,37 +433,48 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-        // Placeholder: será implementado con DB
-        return { success: true };
+        await db.updateEvent(input.eventId, { mercadoPagoLink: input.url });
+        const paymentLinkId = await db.replacePaymentLink(input.eventId, input.url, ctx.user.id);
+        return { success: true, eventId: input.eventId, url: input.url, paymentLinkId };
       }),
     getClicks: protectedProcedure
-      .input(z.object({ paymentLinkId: z.number() }))
+      .input(z.object({ eventId: z.number() }))
       .query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-        // Placeholder: será implementado con DB
-        return [];
+        return db.getPaymentLinkClicksByEvent(input.eventId);
       }),
     submitConfirmation: protectedProcedure
       .input(z.object({
         eventId: z.number(),
-        screenshotUrl: z.string().url(),
+        imageBase64: z.string().min(50).max(6_000_000),
+        mimeType: z.enum(["image/jpeg", "image/png"]),
       }))
       .mutation(async ({ ctx, input }) => {
-        // Placeholder: será implementado con DB
-        return { success: true };
+        const extension = input.mimeType === "image/png" ? "png" : "jpg";
+        const proof = await storagePut(
+          `payment-proofs/${ctx.user.id}/event-${input.eventId}-${Date.now()}.${extension}`,
+          Buffer.from(input.imageBase64, "base64"),
+          input.mimeType,
+        );
+        const confirmationId = await db.createPaymentConfirmation({
+          userId: ctx.user.id,
+          eventId: input.eventId,
+          screenshotUrl: proof.url,
+          status: "pending",
+        });
+        return { success: true, confirmationId };
       }),
     getConfirmations: protectedProcedure
       .input(z.object({ eventId: z.number().optional() }))
       .query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-        // Placeholder: será implementado con DB
-        return [];
+        return db.getPaymentConfirmations(input.eventId);
       }),
     approveConfirmation: protectedProcedure
       .input(z.object({ confirmationId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-        // Placeholder: será implementado con DB
+        await db.reviewPaymentConfirmation(input.confirmationId, ctx.user.id, "approved");
         return { success: true };
       }),
     rejectConfirmation: protectedProcedure
@@ -453,7 +484,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new Error("Unauthorized");
-        // Placeholder: será implementado con DB
+        await db.reviewPaymentConfirmation(input.confirmationId, ctx.user.id, "rejected", input.reason);
         return { success: true };
       }),
   }),

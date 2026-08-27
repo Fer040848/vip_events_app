@@ -12,6 +12,7 @@ import {
   userPresence,
   users,
   vipOrders,
+  vipProducts,
   paymentLinks,
   paymentLinkClicks,
   paymentConfirmations,
@@ -23,6 +24,7 @@ import {
   type InsertUser,
   type InsertUserPresence,
   type InsertVipOrder,
+  type InsertVipProduct,
   type InsertPaymentLink,
   type InsertPaymentLinkClick,
   type InsertPaymentConfirmation,
@@ -204,6 +206,177 @@ export async function updateVipOrder(id: number, data: Partial<InsertVipOrder>) 
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(vipOrders).set(data).where(eq(vipOrders.id, id));
+}
+
+export async function getVipProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(vipProducts)
+    .where(eq(vipProducts.isActive, true))
+    .orderBy(desc(vipProducts.createdAt));
+}
+
+export async function createVipProduct(data: InsertVipProduct) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(vipProducts).values(data);
+  return result[0].insertId;
+}
+
+export async function updateVipProduct(id: number, data: Partial<InsertVipProduct>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(vipProducts).set(data).where(eq(vipProducts.id, id));
+}
+
+export async function archiveVipProduct(id: number) {
+  await updateVipProduct(id, { isActive: false });
+}
+
+export async function getActivePaymentLinkByEvent(eventId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(paymentLinks)
+    .where(and(eq(paymentLinks.eventId, eventId), eq(paymentLinks.isActive, true)))
+    .orderBy(desc(paymentLinks.updatedAt))
+    .limit(1);
+  return result[0];
+}
+
+export async function getPaymentLinkHistory(eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(paymentLinks)
+    .where(eq(paymentLinks.eventId, eventId))
+    .orderBy(desc(paymentLinks.updatedAt));
+}
+
+export async function replacePaymentLink(eventId: number, url: string, adminId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(paymentLinks)
+    .set({ isActive: false, updatedBy: adminId })
+    .where(and(eq(paymentLinks.eventId, eventId), eq(paymentLinks.isActive, true)));
+
+  const result = await db.insert(paymentLinks).values({
+    eventId,
+    url,
+    isActive: true,
+    createdBy: adminId,
+    updatedBy: adminId,
+  });
+  return result[0].insertId;
+}
+
+export async function recordPaymentLinkClick(data: InsertPaymentLinkClick) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(paymentLinkClicks).values(data);
+  return result[0].insertId;
+}
+
+export async function getPaymentLinkClicksByEvent(eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: paymentLinkClicks.id,
+      paymentLinkId: paymentLinkClicks.paymentLinkId,
+      userId: paymentLinkClicks.userId,
+      userName: users.name,
+      userCode: users.openId,
+      clickedAt: paymentLinkClicks.clickedAt,
+      userAgent: paymentLinkClicks.userAgent,
+    })
+    .from(paymentLinkClicks)
+    .leftJoin(users, eq(paymentLinkClicks.userId, users.id))
+    .where(eq(paymentLinkClicks.eventId, eventId))
+    .orderBy(desc(paymentLinkClicks.clickedAt));
+}
+
+export async function createPaymentConfirmation(data: InsertPaymentConfirmation) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(paymentConfirmations).values(data);
+  return result[0].insertId;
+}
+
+export async function getPaymentConfirmations(eventId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const selection = {
+    id: paymentConfirmations.id,
+    userId: paymentConfirmations.userId,
+    eventId: paymentConfirmations.eventId,
+    screenshotUrl: paymentConfirmations.screenshotUrl,
+    status: paymentConfirmations.status,
+    rejectionReason: paymentConfirmations.rejectionReason,
+    submittedAt: paymentConfirmations.submittedAt,
+    reviewedBy: paymentConfirmations.reviewedBy,
+    reviewedAt: paymentConfirmations.reviewedAt,
+    userName: users.name,
+    userCode: users.openId,
+    eventTitle: events.title,
+  };
+
+  if (eventId) {
+    return db
+      .select(selection)
+      .from(paymentConfirmations)
+      .leftJoin(users, eq(paymentConfirmations.userId, users.id))
+      .leftJoin(events, eq(paymentConfirmations.eventId, events.id))
+      .where(eq(paymentConfirmations.eventId, eventId))
+      .orderBy(desc(paymentConfirmations.submittedAt));
+  }
+
+  return db
+    .select(selection)
+    .from(paymentConfirmations)
+    .leftJoin(users, eq(paymentConfirmations.userId, users.id))
+    .leftJoin(events, eq(paymentConfirmations.eventId, events.id))
+    .orderBy(desc(paymentConfirmations.submittedAt));
+}
+
+export async function reviewPaymentConfirmation(
+  confirmationId: number,
+  adminId: number,
+  status: "approved" | "rejected",
+  rejectionReason?: string,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db
+    .select()
+    .from(paymentConfirmations)
+    .where(eq(paymentConfirmations.id, confirmationId))
+    .limit(1);
+  const confirmation = result[0];
+  if (!confirmation) throw new Error("Payment confirmation not found");
+
+  await db
+    .update(paymentConfirmations)
+    .set({
+      status,
+      rejectionReason: status === "rejected" ? rejectionReason ?? null : null,
+      reviewedBy: adminId,
+      reviewedAt: new Date(),
+    })
+    .where(eq(paymentConfirmations.id, confirmationId));
+
+  if (status === "approved") {
+    await db
+      .update(invitations)
+      .set({ status: "paid" })
+      .where(and(eq(invitations.userId, confirmation.userId), eq(invitations.eventId, confirmation.eventId)));
+  }
 }
 
 export async function createNotification(data: InsertNotification) {
@@ -449,7 +622,25 @@ export async function deleteEventPhoto(photoId: number, userId: number) {
 export async function getAllVipOrders() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(vipOrders).orderBy(desc(vipOrders.createdAt));
+  return db
+    .select({
+      id: vipOrders.id,
+      userId: vipOrders.userId,
+      eventId: vipOrders.eventId,
+      invitationId: vipOrders.invitationId,
+      items: vipOrders.items,
+      status: vipOrders.status,
+      notes: vipOrders.notes,
+      createdAt: vipOrders.createdAt,
+      updatedAt: vipOrders.updatedAt,
+      userName: users.name,
+      userCode: users.openId,
+      eventTitle: events.title,
+    })
+    .from(vipOrders)
+    .leftJoin(users, eq(vipOrders.userId, users.id))
+    .leftJoin(events, eq(vipOrders.eventId, events.id))
+    .orderBy(desc(vipOrders.createdAt));
 }
 
 

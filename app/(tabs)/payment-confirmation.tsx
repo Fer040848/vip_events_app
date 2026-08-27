@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,7 +20,7 @@ export default function PaymentConfirmationScreen() {
   const colors = useColors();
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ uri: string; mimeType: 'image/jpeg' | 'image/png' } | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const { data: event } = trpc.events.get.useQuery(
@@ -44,15 +45,18 @@ export default function PaymentConfirmationScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false,
+        quality: 0.65,
       });
 
       if (!result.canceled) {
-        setSelectedImage(result.assets[0].uri);
+        const asset = result.assets[0];
+        setSelectedImage({
+          uri: asset.uri,
+          mimeType: asset.mimeType === 'image/png' ? 'image/png' : 'image/jpeg',
+        });
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'No se pudo acceder a la galería');
     }
   };
@@ -70,12 +74,16 @@ export default function PaymentConfirmationScreen() {
 
     setUploading(true);
     try {
-      // Aquí iría la lógica para subir la imagen a S3 y obtener la URL
-      // Por ahora, usamos la URI local como placeholder
-      submitConfirmationMutation.mutate({
-        eventId: Number(eventId),
-        screenshotUrl: selectedImage,
+      const imageBase64 = await FileSystem.readAsStringAsync(selectedImage.uri, {
+        encoding: FileSystem.EncodingType.Base64,
       });
+      await submitConfirmationMutation.mutateAsync({
+        eventId: Number(eventId),
+        imageBase64,
+        mimeType: selectedImage.mimeType,
+      });
+    } catch {
+      Alert.alert('Error', 'No se pudo subir el comprobante. Inténtalo de nuevo.');
     } finally {
       setUploading(false);
     }
@@ -111,7 +119,7 @@ export default function PaymentConfirmationScreen() {
             📸 Instrucciones
           </Text>
           <Text style={[styles.instructionText, { color: colors.foreground }]}>
-            1. Toma una captura de pantalla de tu comprobante de transferencia
+            1. Conserva el comprobante emitido por tu banco o Mercado Pago
           </Text>
           <Text style={[styles.instructionText, { color: colors.foreground }]}>
             2. Selecciona la imagen desde tu galería
@@ -131,7 +139,7 @@ export default function PaymentConfirmationScreen() {
               Comprobante seleccionado
             </Text>
             <Image
-              source={{ uri: selectedImage }}
+              source={{ uri: selectedImage.uri }}
               style={[
                 styles.previewImage,
                 { borderColor: colors.border },

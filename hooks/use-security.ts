@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Platform, Share, Alert } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 
 /**
@@ -23,32 +23,14 @@ export function useSecurity() {
   }, []);
 
   /**
-   * Bloquear compartir a plataformas específicas
+   * Bloquear cualquier intento de compartir contenido privado.
    */
-  const handleBlockedShare = async (title: string, message: string) => {
-    try {
-      const result = await Share.share({
-        message,
-        title,
-        url: undefined, // No permitir URLs
-      });
-
-      // Si el usuario intenta compartir a WhatsApp, Telegram, etc, mostrar alerta
-      if (result.action === Share.dismissedAction) {
-        // Usuario canceló
-        return;
-      }
-
-      // Bloquear compartir a plataformas específicas
-      const blockedApps = ['com.whatsapp', 'org.telegram.messenger', 'com.facebook.orca'];
-      Alert.alert(
-        '⚠️ Acceso Restringido',
-        'Esta aplicación es TOP SECRET. No puedes compartir links o información con otras plataformas.',
-        [{ text: 'Entendido', style: 'default' }]
-      );
-    } catch (error) {
-      console.error('Error en compartir:', error);
-    }
+  const handleBlockedShare = () => {
+    Alert.alert(
+      'Acceso restringido',
+      'La información de After Room es privada y no se puede compartir fuera de la aplicación.',
+      [{ text: 'Entendido', style: 'default' }]
+    );
   };
 
   /**

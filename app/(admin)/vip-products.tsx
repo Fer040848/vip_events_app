@@ -14,14 +14,11 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useVIPProducts } from "@/hooks/use-vip-products";
 import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
-import { HamburgerButton } from "@/components/hamburger-button";
-import { AdminSidebar } from "@/components/admin-sidebar";
 import * as Haptics from "expo-haptics";
 
 export default function VIPProductsScreen() {
   const colors = useColors();
   const { user } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const {
     products,
     loading,
@@ -169,18 +166,6 @@ export default function VIPProductsScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background">
-      {/* Header con botón hamburguesa */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <HamburgerButton onPress={() => setSidebarOpen(true)} />
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>
-          ⭐ Productos VIP
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
-
-      {/* Sidebar */}
-      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
       <ScrollView contentContainerStyle={styles.container}>
         {/* Formulario */}
         <View style={styles.section}>

@@ -110,6 +110,25 @@ export type VipOrder = typeof vipOrders.$inferSelect;
 export type InsertVipOrder = typeof vipOrders.$inferInsert;
 
 /**
+ * VIP product catalog — products managed by admins and visible to members.
+ */
+export const vipProducts = mysqlTable("vip_products", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  category: varchar("category", { length: 100 }).notNull().default("General"),
+  imageUrl: text("imageUrl"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type VipProduct = typeof vipProducts.$inferSelect;
+export type InsertVipProduct = typeof vipProducts.$inferInsert;
+
+/**
  * Notifications table — push notifications sent to users
  */
 export const notifications = mysqlTable("notifications", {

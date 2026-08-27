@@ -26,6 +26,7 @@ export default function AdminOrdersScreen() {
   const { data: orders, isLoading, refetch } = trpc.vipOrders.getAllOrders.useQuery(undefined, {
     refetchInterval: 10000, // Poll every 10s
   });
+  const { data: products = [] } = trpc.vipProducts.list.useQuery();
 
   const updateStatus = trpc.vipOrders.updateStatus.useMutation({
     onSuccess: () => refetch(),
@@ -120,9 +121,10 @@ export default function AdminOrdersScreen() {
             }
             renderItem={({ item }) => {
               const cfg = STATUS_CONFIG[item.status ?? "pending"];
-              let parsedItems: Array<{ name: string; quantity: number }> = [];
+              let parsedItems: string[] = [];
               try {
-                parsedItems = JSON.parse(item.items ?? "[]");
+                const rawItems: unknown = JSON.parse(item.items ?? "[]");
+                parsedItems = Array.isArray(rawItems) ? rawItems.map(String) : [];
               } catch {
                 parsedItems = [];
               }
@@ -131,6 +133,10 @@ export default function AdminOrdersScreen() {
                   <View style={styles.orderCardHeader}>
                     <View style={styles.orderCardLeft}>
                       <Text style={styles.orderNumber}>Pedido #{item.id}</Text>
+                      <Text style={styles.memberName}>
+                        {item.userName ?? item.userCode?.replace("code_", "") ?? `Usuario #${item.userId}`}
+                      </Text>
+                      <Text style={styles.eventName}>{item.eventTitle ?? "Evento VIP"}</Text>
                       <Text style={styles.orderTime}>
                         {new Date(item.createdAt).toLocaleTimeString("es-MX", {
                           hour: "2-digit", minute: "2-digit",
@@ -148,14 +154,17 @@ export default function AdminOrdersScreen() {
 
                   {/* Items */}
                   <View style={styles.itemsList}>
-                    {parsedItems.length > 0 ? parsedItems.map((it, idx) => (
+                    {parsedItems.length > 0 ? parsedItems.map((itemId, idx) => {
+                      const product = products.find((candidate) => candidate.id.toString() === itemId);
+                      return (
                       <View key={idx} style={styles.itemRow}>
-                        <Text style={styles.itemName}>{it.name}</Text>
+                        <Text style={styles.itemName}>{product?.name ?? "Producto VIP"}</Text>
                         <View style={styles.itemQtyBadge}>
-                          <Text style={styles.itemQty}>x{it.quantity}</Text>
+                          <Text style={styles.itemQty}>$ {product ? Number(product.price).toFixed(2) : "—"}</Text>
                         </View>
                       </View>
-                    )) : (
+                      );
+                    }) : (
                       <Text style={styles.itemsRaw}>{item.items}</Text>
                     )}
                   </View>
@@ -171,7 +180,7 @@ export default function AdminOrdersScreen() {
                   {item.status !== "delivered" && item.status !== "cancelled" && (
                     <TouchableOpacity
                       style={[styles.actionBtn, { backgroundColor: cfg.color + "22", borderColor: cfg.color + "44" }]}
-                      onPress={() => handleUpdateStatus(item.id, item.status ?? "pending", `Usuario #${item.userId}`)}
+                      onPress={() => handleUpdateStatus(item.id, item.status ?? "pending", item.userName ?? `Usuario #${item.userId}`)}
                       disabled={updateStatus.isPending}
                     >
                       <Text style={[styles.actionBtnText, { color: cfg.color }]}>
@@ -307,6 +316,17 @@ const styles = StyleSheet.create({
   orderTime: {
     fontSize: 11,
     color: "#8A7A5A",
+  },
+  memberName: {
+    fontSize: 13,
+    color: "#F5E6C8",
+    fontWeight: "600",
+    marginTop: 3,
+  },
+  eventName: {
+    fontSize: 11,
+    color: "#C9A84C",
+    marginTop: 2,
   },
   statusBadge: {
     borderRadius: 8,

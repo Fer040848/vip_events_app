@@ -510,7 +510,7 @@ export default function AdminEventsScreen() {
                   ))}
                 </View>
                 {form.status === "draft" && (
-                  <Text style={styles.statusHint}>💡 Cambia a "Publicado" para que los invitados puedan verlo</Text>
+                  <Text style={styles.statusHint}>💡 Cambia a {`"Publicado"`} para que los invitados puedan verlo</Text>
                 )}
               </View>
 

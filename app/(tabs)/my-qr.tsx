@@ -7,7 +7,6 @@ import {
   Alert,
   FlatList,
   Linking,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -49,12 +48,20 @@ export default function MyQRScreen() {
       Alert.alert("Error", err.message);
     },
   });
+  const openPaymentLink = trpc.payments.openLink.useMutation({
+    onSuccess: ({ url }) => {
+      Linking.openURL(url).catch(() => {
+        Alert.alert("Pago", "No fue posible abrir el enlace de pago.");
+      });
+    },
+    onError: (error) => {
+      Alert.alert("Pago", error.message);
+    },
+  });
 
   const getEventTitle = (eventId: number) => {
     return events?.find((e) => e.id === eventId)?.title ?? "Evento VIP";
   };
-
-  const getEvent = (eventId: number) => events?.find((e) => e.id === eventId);
 
   const handleGenerateQR = (eventId: number) => {
     setGeneratingFor(eventId);
@@ -63,45 +70,10 @@ export default function MyQRScreen() {
   };
 
   const handlePay = (eventId: number) => {
-    const event = getEvent(eventId);
-    if (event?.mercadoPagoLink) {
-      Linking.openURL(event.mercadoPagoLink);
-    } else {
-      Alert.alert("Pago", "El enlace de pago estará disponible pronto. Contacta al organizador.");
-    }
-  };
-
-  const handleShareWhatsApp = async (invitation: NonNullable<typeof invitations>[0]) => {
-    const eventTitle = getEventTitle(invitation.eventId);
-    const statusLabel = STATUS_LABELS[invitation.status]?.label ?? invitation.status;
-    const message = `🎉 *Mi Invitación VIP*\n\n👑 Evento: ${eventTitle}\n🎫 Estado: ${statusLabel}\n\n🔑 Código QR: \`${invitation.qrCode}\`\n\nDescargá la app VIP Events para ver tu QR completo.`;
-    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
-    const canOpen = await Linking.canOpenURL(whatsappUrl);
-    if (canOpen) {
-      Linking.openURL(whatsappUrl);
-    } else {
-      // Fallback to native share
-      try {
-        await Share.share({
-          message,
-          title: "Mi Invitación VIP",
-        });
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  };
-
-  const handleShareNative = async (invitation: NonNullable<typeof invitations>[0]) => {
-    const eventTitle = getEventTitle(invitation.eventId);
-    try {
-      await Share.share({
-        message: `🎉 Mi Invitación VIP para ${eventTitle}\n\nCódigo QR: ${invitation.qrCode}\n\nEstado: ${STATUS_LABELS[invitation.status]?.label ?? invitation.status}`,
-        title: "Mi Invitación VIP",
-      });
-    } catch (e) {
-      console.error(e);
-    }
+    openPaymentLink.mutate({
+      eventId,
+      userAgent: "afterroommx-mobile",
+    });
   };
 
   const activeInvitations = invitations?.filter(
@@ -205,25 +177,24 @@ export default function MyQRScreen() {
                 {/* Action buttons */}
                 <View style={styles.actionRow}>
                   {displayedInvitation.status === "pending" && (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.payBtn]}
-                      onPress={() => handlePay(displayedInvitation.eventId)}
-                    >
-                      <Text style={styles.payBtnText}>💳 Pagar Entrada</Text>
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.payBtn, openPaymentLink.isPending && styles.actionBtnDisabled]}
+                        onPress={() => handlePay(displayedInvitation.eventId)}
+                        disabled={openPaymentLink.isPending}
+                      >
+                        <Text style={styles.payBtnText}>
+                          {openPaymentLink.isPending ? "Abriendo pago..." : "💳 Pagar Entrada"}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.proofBtn]}
+                        onPress={() => router.push({ pathname: "/(tabs)/payment-confirmation", params: { eventId: displayedInvitation.eventId.toString() } } as any)}
+                      >
+                        <Text style={styles.proofBtnText}>Enviar comprobante</Text>
+                      </TouchableOpacity>
+                    </>
                   )}
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.whatsappBtn]}
-                    onPress={() => handleShareWhatsApp(displayedInvitation)}
-                  >
-                    <Text style={styles.whatsappBtnText}>📱 WhatsApp</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.shareBtn]}
-                    onPress={() => handleShareNative(displayedInvitation)}
-                  >
-                    <Text style={styles.shareBtnText}>⬆️ Compartir</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             ) : (
@@ -481,25 +452,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
-  whatsappBtn: {
-    backgroundColor: "#25D36622",
+  proofBtn: {
+    backgroundColor: "#C9A84C18",
     borderWidth: 1,
-    borderColor: "#25D36644",
+    borderColor: "#C9A84C66",
   },
-  whatsappBtnText: {
-    color: "#25D366",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  shareBtn: {
-    backgroundColor: "#C9A84C22",
-    borderWidth: 1,
-    borderColor: "#C9A84C44",
-  },
-  shareBtnText: {
+  proofBtnText: {
     color: "#C9A84C",
     fontSize: 12,
     fontWeight: "700",
+  },
+  actionBtnDisabled: {
+    opacity: 0.55,
   },
   allInvitations: {
     paddingHorizontal: 20,

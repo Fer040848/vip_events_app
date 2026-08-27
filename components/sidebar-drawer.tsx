@@ -32,9 +32,11 @@ export function SidebarDrawer({ isAdmin, onClose }: SidebarDrawerProps) {
     { label: 'Dashboard', icon: 'chart.bar.fill', route: '/(admin)' },
     { label: 'Eventos', icon: 'calendar', route: '/(admin)/events' },
     { label: 'Invitados', icon: 'person.2.fill', route: '/(admin)/guests' },
-    { label: 'Códigos', icon: 'key.fill', route: '/(admin)/access-codes', adminOnly: true },
-    { label: 'Pagos', icon: 'creditcard.fill', route: '/(admin)/payments', adminOnly: true },
     { label: 'Productos VIP', icon: 'crown.fill', route: '/(admin)/vip-products', adminOnly: true },
+    { label: 'Pedidos VIP', icon: 'bag.fill', route: '/(admin)/orders', adminOnly: true },
+    { label: 'Links de pago', icon: 'creditcard.fill', route: '/(admin)/payment-links', adminOnly: true },
+    { label: 'Confirmaciones', icon: 'checkmark.circle.fill', route: '/(admin)/payments', adminOnly: true },
+    { label: 'Códigos', icon: 'key.fill', route: '/(admin)/access-codes', adminOnly: true },
     { label: 'Chat', icon: 'bubble.left.and.bubble.right.fill', route: '/(admin)/chat' },
   ];
 

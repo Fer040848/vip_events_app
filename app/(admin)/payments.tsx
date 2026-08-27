@@ -1,405 +1,196 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
+  ScrollView,
   StyleSheet,
-  FlatList,
-  Linking,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+
 import { ScreenContainer } from "@/components/screen-container";
-import { usePayments } from "@/hooks/use-payments";
-import { useAuth } from "@/hooks/use-auth";
-import * as Haptics from "expo-haptics";
+import { getApiBaseUrl } from "@/constants/oauth";
+import { useColors } from "@/hooks/use-colors";
+import { trpc } from "@/lib/trpc";
+
+type PaymentStatus = "all" | "pending" | "approved" | "rejected";
+
+const STATUS_LABELS: Record<Exclude<PaymentStatus, "all">, string> = {
+  pending: "Pendiente",
+  approved: "Aprobado",
+  rejected: "Rechazado",
+};
 
 export default function PaymentsScreen() {
-  const { user } = useAuth();
-  const {
-    loading,
-    error,
-    getPaymentLink,
-    setPaymentLink,
-    getEventPayments,
-  } = usePayments();
+  const colors = useColors();
+  const [filter, setFilter] = useState<PaymentStatus>("pending");
+  const { data: confirmations = [], isLoading, refetch } = trpc.payments.getConfirmations.useQuery({});
 
-  const [paymentLink, setCurrentPaymentLink] = useState("");
-  const [newLink, setNewLink] = useState("");
-  const [updating, setUpdating] = useState(false);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [eventId, setEventId] = useState("");
+  const reviewMutation = trpc.payments.approveConfirmation.useMutation({
+    onSuccess: () => refetch(),
+    onError: (error) => Alert.alert("No se pudo aprobar", error.message),
+  });
+  const rejectMutation = trpc.payments.rejectConfirmation.useMutation({
+    onSuccess: () => refetch(),
+    onError: (error) => Alert.alert("No se pudo rechazar", error.message),
+  });
 
-  useEffect(() => {
-    loadPaymentLink();
-  }, []);
+  const counts = useMemo(() => ({
+    pending: confirmations.filter((item) => item.status === "pending").length,
+    approved: confirmations.filter((item) => item.status === "approved").length,
+    rejected: confirmations.filter((item) => item.status === "rejected").length,
+  }), [confirmations]);
 
-  const loadPaymentLink = async () => {
-    try {
-      const link = await getPaymentLink();
-      if (link) {
-        setCurrentPaymentLink(link.url);
-        setNewLink(link.url);
-      }
-    } catch (err) {
-      console.error("Error loading payment link:", err);
-    }
-  };
-
-  const handleUpdatePaymentLink = async () => {
-    if (!newLink.trim()) {
-      Alert.alert("Error", "Ingresa un URL de pago válido");
-      return;
-    }
-
-    if (!user?.id) {
-      Alert.alert("Error", "Usuario no identificado");
-      return;
-    }
-
-    setUpdating(true);
-    try {
-      await setPaymentLink(newLink.trim(), String(user.id), eventId || undefined);
-      setCurrentPaymentLink(newLink);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Éxito", "Link de pago actualizado correctamente");
-    } catch (err) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", err instanceof Error ? err.message : "Error al actualizar");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleLoadPayments = async () => {
-    if (!eventId.trim()) {
-      Alert.alert("Error", "Ingresa un ID de evento");
-      return;
-    }
-
-    try {
-      const data = await getEventPayments(eventId);
-      setPayments(data);
-    } catch (err) {
-      Alert.alert("Error", "No se pudieron cargar los pagos");
-    }
-  };
-
-  const handleOpenPaymentLink = async () => {
-    if (!paymentLink) {
-      Alert.alert("Error", "No hay link de pago configurado");
-      return;
-    }
-
-    const url = paymentLink.startsWith("http")
-      ? paymentLink
-      : `https://${paymentLink}`;
-
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert("Error", "No se puede abrir el link");
-      }
-    } catch (err) {
-      Alert.alert("Error", "Error al abrir el link");
-    }
-  };
-
-  const renderPaymentItem = ({ item }: { item: any }) => (
-    <View style={styles.paymentCard}>
-      <View style={styles.paymentHeader}>
-        <View>
-          <Text style={styles.paymentUser}>{item.userId}</Text>
-          <Text style={styles.paymentAmount}>${item.amount}</Text>
-        </View>
-        <View
-          style={[
-            styles.statusBadge,
-            {
-              backgroundColor:
-                item.status === "verified"
-                  ? "#22C55E22"
-                  : item.status === "paid"
-                  ? "#F39C1222"
-                  : "#EF444422",
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.statusBadgeText,
-              {
-                color:
-                  item.status === "verified"
-                    ? "#22C55E"
-                    : item.status === "paid"
-                    ? "#F39C12"
-                    : "#EF4444",
-              },
-            ]}
-          >
-            {item.status === "verified"
-              ? "✓ Verificado"
-              : item.status === "paid"
-              ? "⏳ Pendiente"
-              : "✗ No pagado"}
-          </Text>
-        </View>
-      </View>
-
-      {item.proofUrl && (
-        <TouchableOpacity
-          style={styles.proofBtn}
-          onPress={() => handleOpenPaymentLink()}
-        >
-          <Text style={styles.proofBtnText}>📸 Ver Comprobante</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+  const visibleConfirmations = useMemo(
+    () => filter === "all" ? confirmations : confirmations.filter((item) => item.status === filter),
+    [confirmations, filter]
   );
 
+  const getProofUrl = (url: string) => url.startsWith("http") ? url : `${getApiBaseUrl()}${url}`;
+
+  const approve = (confirmationId: number) => {
+    Alert.alert(
+      "Aprobar pago",
+      "Al aprobar, la entrada del miembro se marcará como pagada y podrá usar su QR.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Aprobar", onPress: () => reviewMutation.mutate({ confirmationId }) },
+      ]
+    );
+  };
+
+  const reject = (confirmationId: number) => {
+    Alert.alert(
+      "Rechazar comprobante",
+      "El miembro verá que necesita enviar un nuevo comprobante.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Rechazar", style: "destructive", onPress: () => rejectMutation.mutate({ confirmationId }) },
+      ]
+    );
+  };
+
   return (
-    <ScreenContainer className="bg-black">
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Gestión de Pagos</Text>
+    <ScreenContainer containerClassName="bg-background">
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.intro}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Revisión de pagos</Text>
+          <Text style={[styles.subtitle, { color: colors.muted }]}>Confirma los comprobantes enviados por miembros con acceso.</Text>
+        </View>
 
-        {/* Link de pago actual */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Link de Pago Actual</Text>
+        <View style={styles.metrics}>
+          <Metric value={counts.pending} label="Pendientes" color={colors.primary} />
+          <Metric value={counts.approved} label="Aprobados" color="#4CAF7D" />
+          <Metric value={counts.rejected} label="Rechazados" color="#D96B6B" />
+        </View>
 
-          {paymentLink ? (
-            <View style={styles.linkCard}>
-              <Text style={styles.linkText} numberOfLines={2}>
-                {paymentLink}
-              </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          {(["pending", "all", "approved", "rejected"] as PaymentStatus[]).map((status) => {
+            const active = filter === status;
+            return (
               <TouchableOpacity
-                style={styles.linkBtn}
-                onPress={handleOpenPaymentLink}
+                key={status}
+                style={[styles.filterButton, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? `${colors.primary}18` : colors.surface }]}
+                onPress={() => setFilter(status)}
               >
-                <Text style={styles.linkBtnText}>🔗 Abrir Link</Text>
+                <Text style={[styles.filterText, { color: active ? colors.primary : colors.muted }]}>
+                  {status === "all" ? "Todos" : STATUS_LABELS[status]}
+                </Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <Text style={styles.emptyText}>No hay link de pago configurado</Text>
-          )}
-        </View>
+            );
+          })}
+        </ScrollView>
 
-        {/* Actualizar link de pago */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actualizar Link de Pago</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nuevo URL</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="https://mercadopago.com/..."
-              placeholderTextColor="#555"
-              value={newLink}
-              onChangeText={setNewLink}
-              editable={!updating}
-            />
+        {isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={[styles.subtitle, { color: colors.muted }]}>Cargando comprobantes...</Text>
           </View>
-
-          <TouchableOpacity
-            style={[styles.updateBtn, updating && styles.updateBtnDisabled]}
-            onPress={handleUpdatePaymentLink}
-            disabled={updating}
-          >
-            {updating ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={styles.updateBtnText}>💾 Guardar Link</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Ver pagos de evento */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pagos por Evento</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>ID del Evento</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej: event123"
-              placeholderTextColor="#555"
-              value={eventId}
-              onChangeText={setEventId}
-            />
+        ) : visibleConfirmations.length === 0 ? (
+          <View style={[styles.emptyState, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Text style={styles.emptyIcon}>✓</Text>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Sin comprobantes {filter === "all" ? "" : STATUS_LABELS[filter].toLowerCase()}</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>Las solicitudes enviadas por los miembros aparecerán aquí.</Text>
           </View>
+        ) : (
+          visibleConfirmations.map((confirmation) => {
+            const statusColor = confirmation.status === "approved" ? "#4CAF7D" : confirmation.status === "rejected" ? "#D96B6B" : colors.primary;
+            return (
+              <View key={confirmation.id} style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.memberInfo}>
+                    <Text style={[styles.memberName, { color: colors.foreground }]}>
+                      {confirmation.userName ?? confirmation.userCode?.replace("code_", "") ?? `Usuario #${confirmation.userId}`}
+                    </Text>
+                    <Text style={[styles.eventTitle, { color: colors.muted }]}>{confirmation.eventTitle ?? "Evento VIP"}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor}1A` }]}>
+                    <Text style={[styles.statusText, { color: statusColor }]}>{STATUS_LABELS[confirmation.status]}</Text>
+                  </View>
+                </View>
 
-          <TouchableOpacity
-            style={styles.loadBtn}
-            onPress={handleLoadPayments}
-          >
-            <Text style={styles.loadBtnText}>🔍 Cargar Pagos</Text>
-          </TouchableOpacity>
+                <Image source={{ uri: getProofUrl(confirmation.screenshotUrl) }} style={[styles.proofImage, { borderColor: colors.border }]} resizeMode="cover" />
+                <Text style={[styles.dateText, { color: colors.muted }]}>Recibido: {new Date(confirmation.submittedAt).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</Text>
 
-          {loading ? (
-            <ActivityIndicator color="#C9A84C" size="large" />
-          ) : payments.length === 0 ? (
-            <Text style={styles.emptyText}>No hay pagos para este evento</Text>
-          ) : (
-            <FlatList
-              data={payments}
-              renderItem={renderPaymentItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              nestedScrollEnabled={false}
-            />
-          )}
-        </View>
+                {confirmation.status === "pending" && (
+                  <View style={styles.actions}>
+                    <TouchableOpacity style={[styles.approveButton, { backgroundColor: colors.primary }]} onPress={() => approve(confirmation.id)} disabled={reviewMutation.isPending || rejectMutation.isPending}>
+                      <Text style={styles.approveText}>Aprobar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.rejectButton, { borderColor: colors.border }]} onPress={() => reject(confirmation.id)} disabled={reviewMutation.isPending || rejectMutation.isPending}>
+                      <Text style={[styles.rejectText, { color: colors.muted }]}>Rechazar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            );
+          })
+        )}
       </ScrollView>
     </ScreenContainer>
   );
 }
 
+function Metric({ value, label, color }: { value: number; label: string; color: string }) {
+  return (
+    <View style={styles.metric}>
+      <Text style={[styles.metricValue, { color }]}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#C9A84C",
-    marginBottom: 24,
-    letterSpacing: 1,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-    marginBottom: 16,
-  },
-  linkCard: {
-    backgroundColor: "#1a1a1a",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 12,
-    padding: 16,
-  },
-  linkText: {
-    fontSize: 13,
-    color: "#C9A84C",
-    marginBottom: 12,
-    fontFamily: "monospace",
-  },
-  linkBtn: {
-    backgroundColor: "#C9A84C",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  linkBtnText: {
-    color: "#000",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 12,
-    color: "#C9A84C",
-    fontWeight: "600",
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  input: {
-    backgroundColor: "#1a1a1a",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#fff",
-  },
-  updateBtn: {
-    backgroundColor: "#C9A84C",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  updateBtnDisabled: {
-    opacity: 0.6,
-  },
-  updateBtnText: {
-    color: "#000",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-  loadBtn: {
-    backgroundColor: "#2a2a2a",
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  loadBtnText: {
-    color: "#C9A84C",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  paymentCard: {
-    backgroundColor: "#1a1a1a",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  paymentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  paymentUser: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  paymentAmount: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#C9A84C",
-    marginTop: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  proofBtn: {
-    backgroundColor: "#2a2a2a",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  proofBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#C9A84C",
-  },
-  emptyText: {
-    color: "#888",
-    fontSize: 14,
-    textAlign: "center",
-    paddingVertical: 32,
-  },
+  container: { padding: 20, paddingBottom: 40 },
+  intro: { marginBottom: 20 },
+  title: { fontSize: 25, fontWeight: "800", letterSpacing: 0.2 },
+  subtitle: { fontSize: 13, lineHeight: 19, marginTop: 6 },
+  metrics: { flexDirection: "row", justifyContent: "space-between", marginBottom: 22 },
+  metric: { alignItems: "center", flex: 1 },
+  metricValue: { fontSize: 24, fontWeight: "800" },
+  metricLabel: { color: "#8A7A5A", fontSize: 11, fontWeight: "600", marginTop: 3 },
+  filterRow: { gap: 8, paddingBottom: 18 },
+  filterButton: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8 },
+  filterText: { fontSize: 12, fontWeight: "700" },
+  loadingState: { alignItems: "center", gap: 10, paddingTop: 48 },
+  emptyState: { alignItems: "center", borderRadius: 14, borderWidth: 1, padding: 28, gap: 8 },
+  emptyIcon: { color: "#C9A84C", fontSize: 28, fontWeight: "800" },
+  emptyTitle: { fontSize: 16, fontWeight: "700", textAlign: "center" },
+  emptyText: { fontSize: 13, lineHeight: 19, textAlign: "center" },
+  card: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 12 },
+  cardHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 },
+  memberInfo: { flex: 1 },
+  memberName: { fontSize: 15, fontWeight: "700" },
+  eventTitle: { fontSize: 12, marginTop: 3 },
+  statusBadge: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
+  statusText: { fontSize: 11, fontWeight: "800" },
+  proofImage: { width: "100%", height: 220, borderRadius: 10, borderWidth: 1, backgroundColor: "#0A0A0A" },
+  dateText: { fontSize: 11, marginTop: 9 },
+  actions: { flexDirection: "row", gap: 8, marginTop: 14 },
+  approveButton: { flex: 1, alignItems: "center", borderRadius: 10, paddingVertical: 11 },
+  approveText: { color: "#0A0A0A", fontSize: 13, fontWeight: "800" },
+  rejectButton: { flex: 1, alignItems: "center", borderRadius: 10, borderWidth: 1, paddingVertical: 11 },
+  rejectText: { fontSize: 13, fontWeight: "700" },
 });

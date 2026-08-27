@@ -17,7 +17,6 @@ export function usePaymentLink() {
         if (user?.id) {
           trackClickMutation.mutate({
             paymentLinkId,
-            userId: user.id,
             eventId,
             userAgent: Platform.OS,
           });

@@ -164,6 +164,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="payment-confirmation"
+        options={{
+          href: null,
+          headerTitle: 'Confirmar pago',
+        }}
+      />
+      <Tabs.Screen
         name="_layout-drawer"
         options={{
           href: null,

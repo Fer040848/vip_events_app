@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,56 +12,22 @@ import {
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 
-const VIP_ITEMS = [
-  {
-    id: "champagne",
-    name: "Botella de Champagne",
-    description: "Moët & Chandon o similar, servicio en mesa",
-    emoji: "🍾",
-    category: "Bebidas Premium",
-  },
-  {
-    id: "cheese_board",
-    name: "Tabla de Quesos y Embutidos",
-    description: "Selección gourmet con frutos secos y mermeladas artesanales",
-    emoji: "🧀",
-    category: "Gastronomía",
-  },
-  {
-    id: "cocktail",
-    name: "Cóctel Especial de la Casa",
-    description: "Preparación exclusiva del bartender del evento",
-    emoji: "🍸",
-    category: "Bebidas Premium",
-  },
-  {
-    id: "private_table",
-    name: "Servicio de Mesa Privada",
-    description: "Mesa reservada con atención personalizada durante el evento",
-    emoji: "🛋️",
-    category: "Experiencia VIP",
-  },
-  {
-    id: "photo",
-    name: "Fotografía Profesional",
-    description: "Sesión fotográfica profesional durante el evento (5 fotos editadas)",
-    emoji: "📸",
-    category: "Experiencia VIP",
-  },
-];
-
 export default function VipOrdersScreen() {
   const { user } = useAuth();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [notes, setNotes] = useState("");
-  const [activeEventId, setActiveEventId] = useState<number | null>(null);
-  const [activeInvitationId, setActiveInvitationId] = useState<number | null>(null);
+  const notes = "";
+  const activeEventId: number | null = null;
+  const activeInvitationId: number | null = null;
 
-  const { data: invitations, isLoading: loadingInvitations } = trpc.invitations.myInvitations.useQuery(
+  const { data: invitations } = trpc.invitations.myInvitations.useQuery(
     undefined,
     { enabled: !!user }
   );
   const { data: events } = trpc.events.list.useQuery();
+  const { data: products = [], isLoading: loadingProducts } = trpc.vipProducts.list.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
   const { data: myOrders, refetch: refetchOrders } = trpc.vipOrders.myOrders.useQuery(
     undefined,
     { enabled: !!user, refetchInterval: 10000 } // Poll every 10s for real-time order status
@@ -178,19 +143,24 @@ export default function VipOrdersScreen() {
         {/* VIP Menu */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Menú VIP — Selecciona tus artículos</Text>
-          <View style={styles.menuGrid}>
-            {VIP_ITEMS.map((item) => {
-              const isSelected = selectedItems.has(item.id);
+          {loadingProducts ? (
+            <ActivityIndicator color="#C9A84C" size="large" />
+          ) : products.length === 0 ? (
+            <Text style={styles.emptySubtitle}>No hay productos VIP disponibles por el momento.</Text>
+          ) : (
+            <View style={styles.menuGrid}>
+            {products.map((item) => {
+              const isSelected = selectedItems.has(item.id.toString());
               return (
                 <TouchableOpacity
                   key={item.id}
                   style={[styles.menuItem, isSelected && styles.menuItemSelected]}
-                  onPress={() => toggleItem(item.id)}
+                  onPress={() => toggleItem(item.id.toString())}
                   activeOpacity={0.8}
                   disabled={paidInvitations.length === 0}
                 >
                   <View style={styles.menuItemTop}>
-                    <Text style={styles.menuItemEmoji}>{item.emoji}</Text>
+                    <Text style={styles.menuItemEmoji}>⭐</Text>
                     {isSelected && (
                       <View style={styles.checkBadge}>
                         <Text style={styles.checkText}>✓</Text>
@@ -200,12 +170,14 @@ export default function VipOrdersScreen() {
                   <Text style={styles.menuItemCategory}>{item.category}</Text>
                   <Text style={styles.menuItemName}>{item.name}</Text>
                   <Text style={styles.menuItemDesc} numberOfLines={2}>
-                    {item.description}
+                    {item.description || "Producto exclusivo After Room"}
                   </Text>
+                  <Text style={styles.menuItemPrice}>$ {Number(item.price).toFixed(2)}</Text>
                 </TouchableOpacity>
               );
             })}
-          </View>
+            </View>
+          )}
         </View>
 
         {/* Order Summary */}
@@ -216,10 +188,10 @@ export default function VipOrdersScreen() {
             </Text>
             <View style={styles.selectedList}>
               {Array.from(selectedItems).map((id) => {
-                const item = VIP_ITEMS.find((i) => i.id === id);
+                const item = products.find((product) => product.id.toString() === id);
                 return item ? (
                   <View key={id} style={styles.selectedItem}>
-                    <Text style={styles.selectedItemEmoji}>{item.emoji}</Text>
+                    <Text style={styles.selectedItemEmoji}>⭐</Text>
                     <Text style={styles.selectedItemName}>{item.name}</Text>
                   </View>
                 ) : null;
@@ -277,12 +249,12 @@ export default function VipOrdersScreen() {
                   <View style={styles.orderCardItems}>
                     {Array.isArray(items) && items.length > 0 ? (
                       items.map((itemId) => {
-                        const vipItem = VIP_ITEMS.find((i) => i.id === itemId);
-                        return vipItem ? (
+                        const vipItem = products.find((product) => product.id.toString() === String(itemId));
+                        return (
                           <Text key={itemId} style={styles.orderCardItem}>
-                            {vipItem.emoji} {vipItem.name}
+                            ⭐ {vipItem?.name ?? "Producto VIP"}
                           </Text>
-                        ) : null;
+                        );
                       })
                     ) : (
                       <Text style={[styles.orderCardItem, { color: '#999' }]}>
@@ -436,6 +408,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#8A7A5A",
     lineHeight: 15,
+  },
+  menuItemPrice: {
+    color: "#C9A84C",
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: 2,
   },
   orderSummary: {
     marginHorizontal: 20,

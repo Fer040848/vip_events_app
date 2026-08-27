@@ -234,10 +234,10 @@
 - [x] Schema DB: tabla payment_confirmations (id, userId, eventId, screenshotUrl, status, confirmedAt, reviewedBy, reviewedAt)
 - [x] Admin: panel para actualizar link de pago (input URL, guardar cambios)
 - [x] Router tRPC: 8 endpoints para pagos (trackClick, getLink, updateLink, getClicks, submitConfirmation, getConfirmations, approveConfirmation, rejectConfirmation)
-- [ ] Admin: historial de links de pago (fecha, URL, quién lo cambió)
-- [ ] Admin: ver quién clickeó el link de pago (usuario, fecha, hora)
-- [ ] Admin: dashboard de confirmaciones de pago (pendientes, aprobadas, rechazadas)
-- [ ] Admin: poder aprobar/rechazar confirmaciones de pago
+- [x] Admin: historial de links de pago (fecha, URL, quién lo cambió)
+- [x] Admin: ver quién clickeó el link de pago (usuario, fecha, hora)
+- [x] Admin: dashboard de confirmaciones de pago (pendientes, aprobadas, rechazadas)
+- [x] Admin: poder aprobar/rechazar confirmaciones de pago
 - [x] Usuario: interfaz para enviar screenshot de comprobante de pago
 - [ ] Usuario: ver estado de su confirmación de pago
 - [ ] Notificación: alertar a admin cuando usuario envía comprobante
@@ -256,8 +256,12 @@
 - [x] Integrar sidebar en pantalla de Productos VIP
 - [x] Integrar sidebar en pantalla de Links de Pago
 - [x] Crear CRUD de productos VIP en admin (ya existe)
-- [ ] Integrar visualización de pedidos VIP en admin
-- [ ] Asegurar que link de pago aparezca en pantalla de compra de boletos
-- [ ] Asegurar que productos VIP creados aparezcan en pantalla de usuario
+- [x] Integrar visualización de pedidos VIP en admin
+- [x] Asegurar que link de pago aparezca en pantalla de compra de boletos
+- [x] Separar catálogo VIP persistente de pedidos de usuarios
+- [x] Asegurar que productos VIP creados aparezcan en pantalla de usuario
 - [x] Admin puede editar y borrar productos VIP existentes
-- [ ] Admin puede ver todos los pedidos VIP de usuarios
+- [x] Admin puede ver todos los pedidos VIP de usuarios
+- [x] Reemplazar pestañas inferiores por navegación lateral uniforme en todas las pantallas de administración
+- [x] Quitar las acciones de WhatsApp y compartir del QR para evitar divulgar accesos privados
+- [x] Registrar el clic del miembro antes de abrir el link de pago configurado por el administrador

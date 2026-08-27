@@ -169,7 +169,7 @@ export default function AdminScanScreen() {
                 <Text style={styles.resultIcon}>❌</Text>
                 <Text style={styles.resultTitle}>QR no encontrado</Text>
                 <Text style={styles.resultSubtitle}>
-                  El código "{scanResult.qrCode}" no corresponde a ninguna invitación.
+                  El código {`"${scanResult.qrCode}"`} no corresponde a ninguna invitación.
                 </Text>
                 <TouchableOpacity style={styles.retryBtn} onPress={handleReset}>
                   <Text style={styles.retryBtnText}>Intentar de nuevo</Text>

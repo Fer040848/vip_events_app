@@ -7,7 +7,6 @@ export interface VIPProduct {
   description?: string;
   price: number;
   category?: string;
-  status: "pending" | "confirmed" | "delivered" | "cancelled";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,33 +17,15 @@ export function useVIPProducts() {
   // Obtener todos los productos VIP
   const { data: rawProducts = [], isLoading, refetch } = trpc.vipProducts.list.useQuery();
 
-  // Transformar los datos a VIPProduct
-  const products: VIPProduct[] = rawProducts.map((order: any) => {
-    try {
-      const items = JSON.parse(order.items || "{}");
-      return {
-        id: order.id,
-        name: items.name || "",
-        description: items.description,
-        price: items.price || 0,
-        category: items.category,
-        status: order.status,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
-      };
-    } catch {
-      return {
-        id: order.id,
-        name: "",
-        description: "",
-        price: 0,
-        category: "",
-        status: order.status,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
-      };
-    }
-  });
+  const products: VIPProduct[] = rawProducts.map((product: any) => ({
+    id: product.id,
+    name: product.name,
+    description: product.description ?? "",
+    price: Number(product.price),
+    category: product.category ?? "General",
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+  }));
 
   // Crear producto VIP
   const createMutation = trpc.vipProducts.create.useMutation({

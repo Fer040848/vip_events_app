@@ -11,21 +11,30 @@ import {
 } from 'react-native';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
-import { HamburgerButton } from '@/components/hamburger-button';
-import { AdminSidebar } from '@/components/admin-sidebar';
 import { trpc } from '@/lib/trpc';
+
+const DEFAULT_PAYMENT_LINK = 'https://mpago.la/1Tz6Riv';
 
 export default function PaymentLinksScreen() {
   const colors = useColors();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [newUrl, setNewUrl] = useState('');
 
   const { data: events } = trpc.events.listAll.useQuery();
+  const { data: linkHistory = [], refetch: refetchHistory } = trpc.payments.getHistory.useQuery(
+    { eventId: selectedEventId ?? 0 },
+    { enabled: selectedEventId !== null }
+  );
+  const { data: clicks = [], refetch: refetchClicks } = trpc.payments.getClicks.useQuery(
+    { eventId: selectedEventId ?? 0 },
+    { enabled: selectedEventId !== null }
+  );
   const updateLinkMutation = trpc.payments.updateLink.useMutation({
     onSuccess: () => {
       Alert.alert('✓ Éxito', 'Link de pago actualizado correctamente');
       setNewUrl('');
+      refetchHistory();
+      refetchClicks();
     },
     onError: (error) => {
       Alert.alert('Error', error.message);
@@ -82,7 +91,10 @@ export default function PaymentLinksScreen() {
                         : colors.border,
                   },
                 ]}
-                onPress={() => setSelectedEventId(event.id)}
+                onPress={() => {
+                  setSelectedEventId(event.id);
+                  setNewUrl(event.mercadoPagoLink ?? DEFAULT_PAYMENT_LINK);
+                }}
               >
                 <Text
                   style={[
@@ -116,7 +128,7 @@ export default function PaymentLinksScreen() {
                 color: colors.foreground,
               },
             ]}
-            placeholder="https://mpago.la/..."
+            placeholder={DEFAULT_PAYMENT_LINK}
             placeholderTextColor={colors.muted}
             value={newUrl}
             onChangeText={setNewUrl}
@@ -145,6 +157,52 @@ export default function PaymentLinksScreen() {
             <Text style={styles.updateBtnText}>Actualizar Link</Text>
           )}
         </TouchableOpacity>
+
+        {selectedEventId !== null && (
+          <>
+            <View style={styles.auditSection}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Historial de enlaces</Text>
+              {linkHistory.length === 0 ? (
+                <Text style={[styles.emptyAuditText, { color: colors.muted }]}>Aún no hay cambios registrados para este evento.</Text>
+              ) : (
+                linkHistory.map((link) => (
+                  <View key={link.id} style={[styles.auditRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <View style={styles.auditTextGroup}>
+                      <Text style={[styles.auditLabel, { color: link.isActive ? colors.primary : colors.foreground }]}>
+                        {link.isActive ? 'ACTIVO' : 'Histórico'}
+                      </Text>
+                      <Text style={[styles.auditUrl, { color: colors.muted }]} numberOfLines={1}>{link.url}</Text>
+                    </View>
+                    <Text style={[styles.auditDate, { color: colors.muted }]}>
+                      {new Date(link.updatedAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            <View style={styles.auditSection}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Aperturas del enlace ({clicks.length})</Text>
+              {clicks.length === 0 ? (
+                <Text style={[styles.emptyAuditText, { color: colors.muted }]}>Todavía no hay aperturas registradas.</Text>
+              ) : (
+                clicks.slice(0, 8).map((click) => (
+                  <View key={click.id} style={[styles.auditRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <View style={styles.auditTextGroup}>
+                      <Text style={[styles.clickUser, { color: colors.foreground }]}>
+                        {click.userName ?? click.userCode?.replace('code_', '') ?? `Usuario #${click.userId}`}
+                      </Text>
+                      <Text style={[styles.auditDate, { color: colors.muted }]}>
+                        {new Date(click.clickedAt).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                    <Text style={[styles.clickLabel, { color: colors.primary }]}>Abrió</Text>
+                  </View>
+                ))
+              )}
+            </View>
+          </>
+        )}
 
         {/* Info Section */}
         <View
@@ -244,5 +302,46 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     marginBottom: 4,
+  },
+  auditSection: {
+    marginBottom: 24,
+  },
+  emptyAuditText: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  auditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 8,
+    gap: 10,
+  },
+  auditTextGroup: {
+    flex: 1,
+    gap: 3,
+  },
+  auditLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  auditUrl: {
+    fontSize: 12,
+  },
+  auditDate: {
+    fontSize: 11,
+  },
+  clickUser: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  clickLabel: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
