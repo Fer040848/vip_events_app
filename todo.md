@@ -273,3 +273,6 @@
 - [x] Exportar todos los pedidos VIP filtrados a un archivo CSV
 - [x] Mostrar en el perfil del usuario el estado de revisión de sus comprobantes
 - [x] Validar los flujos de alertas, filtros, exportación y estado de comprobantes
+
+## Operación del entorno
+- [ ] Reducir el consumo de Metro y recuperar la previsualización web de desarrollo
