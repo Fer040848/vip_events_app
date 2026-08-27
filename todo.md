@@ -276,3 +276,9 @@
 
 ## Operación del entorno
 - [x] Reducir el consumo de Metro y recuperar la previsualización web de desarrollo
+
+## Resiliencia y optimización v15
+- [x] Añadir estados de carga, error y reintento en el panel administrativo
+- [x] Incorporar indicador de arranque para la primera carga de la aplicación
+- [x] Retirar rutas Firebase heredadas que no pertenecen a la navegación activa
+- [x] Eliminar dependencias Firebase sin referencias activas y validar el bundle

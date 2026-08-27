@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -61,5 +61,30 @@ describe("contratos de acceso privado y administración", () => {
     expect(router).toContain("myConfirmations: protectedProcedure.query(({ ctx }) => db.getPaymentConfirmationsForUser(ctx.user.id))");
     expect(profile).toContain("PAYMENT_PROOF_STATUS");
     expect(profile).toContain("trpc.payments.myConfirmations.useQuery");
+  });
+
+  it("muestra estados de carga y una recuperación segura si el panel no puede obtener datos", () => {
+    const appLayout = source("app/_layout.tsx");
+    const adminLayout = source("app/(admin)/_layout.tsx");
+    const dashboard = source("app/(admin)/index.tsx");
+    const events = source("app/(admin)/events.tsx");
+
+    expect(appLayout).toContain("<StartupGate>");
+    expect(adminLayout).toContain("<AdminErrorBoundary>");
+    expect(dashboard).toContain("<AdminErrorState onRetry={retryDashboard}");
+    expect(events).toContain("<AdminLoadingState");
+    expect(events).toContain("<AdminErrorState");
+  });
+
+  it("retira las rutas Firebase obsoletas y usa tRPC para invitados", () => {
+    const guests = source("app/(admin)/guests.tsx");
+    const packageJson = source("package.json");
+
+    expect(guests).toContain("trpc.admin.users.useQuery");
+    expect(guests).not.toContain("useGuestsManagement");
+    expect(packageJson).not.toContain('"firebase"');
+    expect(existsSync(resolve(process.cwd(), "app/(admin)/events-edit.tsx"))).toBe(false);
+    expect(existsSync(resolve(process.cwd(), "hooks/use-events.ts"))).toBe(false);
+    expect(existsSync(resolve(process.cwd(), "hooks/use-guests-management.ts"))).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ import { DrawerLayoutAndroid, GestureHandlerRootView } from "react-native-gestur
 import { Tabs, useRouter } from "expo-router";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AdminErrorBoundary } from "@/components/admin-data-state";
 import { SidebarDrawer } from "@/components/sidebar-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
@@ -60,7 +61,8 @@ export default function AdminLayout() {
   const renderDrawer = () => <SidebarDrawer isAdmin onClose={closeDrawer} />;
 
   const adminContent = (
-    <Tabs
+    <AdminErrorBoundary>
+      <Tabs
       screenOptions={{
         headerShown: true,
         headerStyle: styles.header,
@@ -76,7 +78,6 @@ export default function AdminLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Panel de Administración", headerTitle: "After Room · Admin" }} />
       <Tabs.Screen name="events" options={{ title: "Eventos" }} />
-      <Tabs.Screen name="events-edit" options={{ title: "Editar evento" }} />
       <Tabs.Screen name="guests" options={{ title: "Invitados" }} />
       <Tabs.Screen name="vip-products" options={{ title: "Productos VIP" }} />
       <Tabs.Screen name="vip-products-edit" options={{ title: "Editar productos VIP" }} />
@@ -88,7 +89,8 @@ export default function AdminLayout() {
       <Tabs.Screen name="scan" options={{ title: "Escanear QR" }} />
       <Tabs.Screen name="notifications" options={{ title: "Notificaciones" }} />
       <Tabs.Screen name="chat" options={{ title: "Chat administrativo" }} />
-    </Tabs>
+      </Tabs>
+    </AdminErrorBoundary>
   );
 
   if (Platform.OS === "web") {

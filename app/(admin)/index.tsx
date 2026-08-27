@@ -1,28 +1,30 @@
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
-import {
-  Alert,
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { AdminErrorState, AdminLoadingState } from "@/components/admin-data-state";
 
 export default function AdminDashboardScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const { data: stats } = trpc.admin.stats.useQuery();
-  const { data: events } = trpc.events.listAll.useQuery();
-  const { data: users } = trpc.admin.users.useQuery();
+  const statsQuery = trpc.admin.stats.useQuery();
+  const eventsQuery = trpc.events.listAll.useQuery();
+  const usersQuery = trpc.admin.users.useQuery();
   const { data: vipOrders } = trpc.vipOrders.getByEvent.useQuery(
     { eventId: 0 },
     { enabled: false }
   );
+  const { data: stats } = statsQuery;
+  const { data: events } = eventsQuery;
+  const { data: users } = usersQuery;
+  const isLoading = statsQuery.isLoading || eventsQuery.isLoading || usersQuery.isLoading;
+  const hasDataError = Boolean(statsQuery.error || eventsQuery.error || usersQuery.error);
+
+  const retryDashboard = () => {
+    void Promise.all([statsQuery.refetch(), eventsQuery.refetch(), usersQuery.refetch()]);
+  };
 
   const handleLogout = () => {
     Alert.alert("Cerrar sesión", "¿Cerrar sesión de administrador?", [
@@ -40,6 +42,22 @@ export default function AdminDashboardScreen() {
 
   const recentEvents = events?.slice(0, 3) ?? [];
   const recentUsers = users?.slice(0, 5) ?? [];
+
+  if (isLoading) {
+    return (
+      <ScreenContainer containerClassName="bg-background">
+        <AdminLoadingState label="Cargando resumen, eventos e invitados…" />
+      </ScreenContainer>
+    );
+  }
+
+  if (hasDataError) {
+    return (
+      <ScreenContainer containerClassName="bg-background">
+        <AdminErrorState onRetry={retryDashboard} />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer containerClassName="bg-background">

@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { AdminErrorState, AdminLoadingState } from "@/components/admin-data-state";
 
 type EventForm = {
   title: string;
@@ -209,7 +210,7 @@ export default function AdminEventsScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<EventForm>(EMPTY_FORM);
 
-  const { data: events, isLoading, refetch } = trpc.events.listAll.useQuery();
+  const { data: events, isLoading, error, refetch } = trpc.events.listAll.useQuery();
 
   const createEvent = trpc.events.create.useMutation({
     onSuccess: () => {
@@ -338,9 +339,13 @@ export default function AdminEventsScreen() {
 
         {/* Events List */}
         {isLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color="#C9A84C" />
-          </View>
+          <AdminLoadingState label="Actualizando los eventos privados…" />
+        ) : error ? (
+          <AdminErrorState
+            title="No pudimos consultar los eventos"
+            description="No se realizaron cambios. Comprueba la conexión y vuelve a intentarlo."
+            onRetry={() => void refetch()}
+          />
         ) : (
           <FlatList
             data={events ?? []}
