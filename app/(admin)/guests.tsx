@@ -33,8 +33,8 @@ export default function AdminGuestsScreen() {
     usersQuery.error || eventsQuery.error || (selectedEventId !== null && invitationsQuery.error),
   );
 
-  const retry = () => {
-    void Promise.all([
+  const retry = async () => {
+    await Promise.all([
       usersQuery.refetch(),
       eventsQuery.refetch(),
       selectedEventId !== null ? invitationsQuery.refetch() : Promise.resolve(),

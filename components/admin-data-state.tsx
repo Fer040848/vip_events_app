@@ -1,4 +1,5 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useState } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type LoadingStateProps = {
@@ -20,14 +21,46 @@ export function AdminLoadingState({ label = "Actualizando información privada�
 type ErrorStateProps = {
   title?: string;
   description?: string;
-  onRetry: () => void;
+  onRetry: () => void | Promise<unknown>;
+  autoRetryDelayMs?: number;
+  maxAutoRetries?: number;
 };
 
 export function AdminErrorState({
   title = "No pudimos cargar esta información",
   description = "Tus datos no se han modificado. Revisa tu conexión e inténtalo nuevamente.",
   onRetry,
+  autoRetryDelayMs = 2500,
+  maxAutoRetries = 2,
 }: ErrorStateProps) {
+  const [autoAttempts, setAutoAttempts] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const retry = useCallback(
+    async (isAutomatic = false) => {
+      setIsRetrying(true);
+      if (isAutomatic) setAutoAttempts((attempts) => attempts + 1);
+      try {
+        await onRetry();
+      } finally {
+        setIsRetrying(false);
+      }
+    },
+    [onRetry],
+  );
+
+  useEffect(() => {
+    if (autoAttempts >= maxAutoRetries || isRetrying) return;
+    const timer = setTimeout(() => void retry(true), autoRetryDelayMs);
+    return () => clearTimeout(timer);
+  }, [autoAttempts, autoRetryDelayMs, isRetrying, maxAutoRetries, retry]);
+
+  const connectionMessage = isRetrying
+    ? "Reconectando de forma segura…"
+    : autoAttempts < maxAutoRetries
+      ? `Sin conexión. Reintentaremos automáticamente (${autoAttempts + 1}/${maxAutoRetries}).`
+      : "Seguimos sin conexión. Puedes volver a intentarlo cuando estés listo.";
+
   return (
     <View style={styles.stateContainer} accessibilityRole="alert">
       <View style={styles.errorGlyph}>
@@ -35,8 +68,20 @@ export function AdminErrorState({
       </View>
       <Text style={styles.errorTitle}>{title}</Text>
       <Text style={styles.errorDescription}>{description}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={onRetry} activeOpacity={0.82}>
-        <Text style={styles.retryButtonText}>Reintentar</Text>
+      <View style={styles.connectionNotice} accessibilityLiveRegion="polite">
+        <View style={[styles.connectionDot, isRetrying && styles.connectionDotRetrying]} />
+        <Text style={styles.connectionText}>{connectionMessage}</Text>
+      </View>
+      <TouchableOpacity
+        style={[styles.retryButton, isRetrying && styles.retryButtonDisabled]}
+        onPress={() => {
+          setAutoAttempts(0);
+          void retry();
+        }}
+        disabled={isRetrying}
+        activeOpacity={0.82}
+      >
+        <Text style={styles.retryButtonText}>{isRetrying ? "Reconectando…" : "Reintentar ahora"}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -143,12 +188,37 @@ const styles = StyleSheet.create({
     marginTop: 8,
     maxWidth: 300,
   },
+  connectionNotice: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginTop: 14,
+    maxWidth: 310,
+  },
+  connectionDot: {
+    backgroundColor: "#E74C3C",
+    borderRadius: 4,
+    height: 8,
+    marginRight: 8,
+    width: 8,
+  },
+  connectionDotRetrying: {
+    backgroundColor: "#C9A84C",
+  },
+  connectionText: {
+    color: "#8A7A5A",
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+  },
   retryButton: {
     backgroundColor: "#C9A84C",
     borderRadius: 10,
     paddingHorizontal: 22,
     paddingVertical: 12,
     marginTop: 20,
+  },
+  retryButtonDisabled: {
+    opacity: 0.6,
   },
   retryButtonText: {
     color: "#0A0A0A",

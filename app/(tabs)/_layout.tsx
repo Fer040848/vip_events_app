@@ -157,13 +157,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="user-profile"
-        options={{
-          href: null,
-          headerTitle: 'Perfil de Usuario',
-        }}
-      />
-      <Tabs.Screen
         name="payment-confirmation"
         options={{
           href: null,

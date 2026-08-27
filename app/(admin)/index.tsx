@@ -22,8 +22,8 @@ export default function AdminDashboardScreen() {
   const isLoading = statsQuery.isLoading || eventsQuery.isLoading || usersQuery.isLoading;
   const hasDataError = Boolean(statsQuery.error || eventsQuery.error || usersQuery.error);
 
-  const retryDashboard = () => {
-    void Promise.all([statsQuery.refetch(), eventsQuery.refetch(), usersQuery.refetch()]);
+  const retryDashboard = async () => {
+    await Promise.all([statsQuery.refetch(), eventsQuery.refetch(), usersQuery.refetch()]);
   };
 
   const handleLogout = () => {

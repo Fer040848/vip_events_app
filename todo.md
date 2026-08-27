@@ -282,3 +282,8 @@
 - [x] Incorporar indicador de arranque para la primera carga de la aplicación
 - [x] Retirar rutas Firebase heredadas que no pertenecen a la navegación activa
 - [x] Eliminar dependencias Firebase sin referencias activas y validar el bundle
+
+## Resiliencia y limpieza v16
+- [x] Retirar rutas de perfil heredadas que no estén enlazadas
+- [x] Añadir reintento automático y aviso de conexión al panel administrativo
+- [x] Crear pruebas de interfaz para carga, error y reintento
