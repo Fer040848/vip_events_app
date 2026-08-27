@@ -275,4 +275,4 @@
 - [x] Validar los flujos de alertas, filtros, exportación y estado de comprobantes
 
 ## Operación del entorno
-- [ ] Reducir el consumo de Metro y recuperar la previsualización web de desarrollo
+- [x] Reducir el consumo de Metro y recuperar la previsualización web de desarrollo
