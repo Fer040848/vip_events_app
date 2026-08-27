@@ -287,3 +287,6 @@
 - [x] Retirar rutas de perfil heredadas que no estén enlazadas
 - [x] Añadir reintento automático y aviso de conexión al panel administrativo
 - [x] Crear pruebas de interfaz para carga, error y reintento
+
+## Corrección de compilación Android
+- [x] Diagnosticar y corregir el fallo de instalación de dependencias en EAS Android
