@@ -23,18 +23,26 @@ describe("contrato de push para el chat general", () => {
 
     expect(config).toContain('"expo-background-task"');
     expect(config).toContain('"expo-notifications"');
-    expect(rootLayout).toContain("useNotifications({ enabled: Boolean(user), onChatNotificationOpen: openChatFromNotification })");
+    expect(rootLayout).toContain("const { notification, dismissNotification } = useNotifications");
+    expect(rootLayout).toContain("onChatNotificationOpen: openChatFromNotification");
     expect(chat).not.toContain('projectId: "vip-events-app"');
   });
 
   it("permite abrir exclusivamente el chat cuando el usuario toca su aviso push", () => {
     const notificationHook = readSource("hooks/use-notifications.ts");
     const rootLayout = readSource("app/_layout.tsx");
+    const tabLayout = readSource("app/(tabs)/_layout.tsx");
+    const chat = readSource("app/(tabs)/chat.tsx");
 
     expect(notificationHook).toContain("getChatNotificationRoute");
     expect(notificationHook).toContain("addNotificationResponseReceivedListener");
     expect(notificationHook).toContain("getLastNotificationResponseAsync");
     expect(rootLayout).toContain("onChatNotificationOpen: openChatFromNotification");
-    expect(rootLayout).toContain('router.push("/(tabs)/chat" as Href)');
+    expect(rootLayout).toContain("params: messageId ? { highlight: String(messageId) } : {}");
+    expect(rootLayout).toContain("<ChatNotificationBanner");
+    expect(tabLayout).toContain("useChatUnreadCount(user?.id)");
+    expect(tabLayout).toContain("tabBarBadge: unreadCount > 0 ? unreadCount : undefined");
+    expect(chat).toContain("useLocalSearchParams<{ highlight?: string }>()");
+    expect(chat).toContain("styles.bubbleHighlighted");
   });
 });

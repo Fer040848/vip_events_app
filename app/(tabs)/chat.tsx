@@ -16,6 +16,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import * as Haptics from "expo-haptics";
+import { useLocalSearchParams } from "expo-router";
 
 type ChatMessage = {
   id: number;
@@ -44,6 +45,7 @@ type Reaction = { id: number; messageId: number; userId: number; userName: strin
 
 export default function ChatScreen() {
   const { user } = useAuth();
+  const { highlight } = useLocalSearchParams<{ highlight?: string }>();
   const [message, setMessage] = useState("");
   const [showOnline, setShowOnline] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -51,10 +53,12 @@ export default function ChatScreen() {
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<number | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
+  const handledHighlightRef = useRef<string | null>(null);
 
   // tRPC utils for direct queries
   const utils = trpc.useUtils();
@@ -208,6 +212,25 @@ export default function ChatScreen() {
     }
   }, [isLoadingInitial]);
 
+  // Al llegar desde un push, centra y resalta el mensaje recibido una sola vez.
+  useEffect(() => {
+    if (!highlight || handledHighlightRef.current === highlight || messages.length === 0) return;
+    const messageId = Number(highlight);
+    const index = messages.findIndex((item) => item.id === messageId);
+    if (!Number.isSafeInteger(messageId) || index < 0) return;
+
+    handledHighlightRef.current = highlight;
+    setHighlightedMessageId(messageId);
+    const scrollTimer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+    }, 160);
+    const clearTimer = setTimeout(() => setHighlightedMessageId(null), 4_000);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(clearTimer);
+    };
+  }, [highlight, messages]);
+
   // Reload reactions when messages update
   useEffect(() => {
     if (messages.length > 0) loadReactions();
@@ -270,7 +293,11 @@ export default function ChatScreen() {
         )}
         <View style={{ maxWidth: "75%" }}>
           <TouchableOpacity
-            style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}
+            style={[
+              styles.bubble,
+              isMine ? styles.bubbleMine : styles.bubbleOther,
+              item.id === highlightedMessageId ? styles.bubbleHighlighted : null,
+            ]}
             onLongPress={() => setReactionPickerMsgId(item.id)}
             activeOpacity={0.9}
           >
@@ -353,6 +380,12 @@ export default function ChatScreen() {
             data={messages}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderMessage}
+            onScrollToIndexFailed={({ index, averageItemLength }) => {
+              flatListRef.current?.scrollToOffset({
+                offset: Math.max(0, index * averageItemLength),
+                animated: true,
+              });
+            }}
             contentContainerStyle={styles.messageList}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
@@ -627,6 +660,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
     borderWidth: 1,
     borderColor: "#222",
+  },
+  bubbleHighlighted: {
+    backgroundColor: "#2B230F",
+    borderColor: "#C9A84C",
+    borderWidth: 2,
   },
   bubbleHeader: {
     flexDirection: "row",

@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { trpc } from '@/lib/trpc';
+import { CHAT_NOTIFICATION_ROUTE, getChatNotificationIntent } from '@/lib/chat-notification-intent';
 
 // Configurar el handler global para notificaciones
 Notifications.setNotificationHandler({
@@ -18,16 +19,11 @@ Notifications.setNotificationHandler({
 
 type UseNotificationsOptions = {
   enabled?: boolean;
-  onChatNotificationOpen?: () => void;
+  onChatNotificationOpen?: (messageId?: number) => void;
 };
 
-export const CHAT_NOTIFICATION_ROUTE = '/(tabs)/chat';
-
 export function getChatNotificationRoute(notification: Notifications.Notification) {
-  const data = notification.request.content.data;
-  return data?.type === 'chat_message' && data?.url === CHAT_NOTIFICATION_ROUTE
-    ? CHAT_NOTIFICATION_ROUTE
-    : null;
+  return getChatNotificationIntent(notification.request.content.data)?.route ?? null;
 }
 
 export function useNotifications({ enabled = true, onChatNotificationOpen }: UseNotificationsOptions = {}) {
@@ -39,7 +35,8 @@ export function useNotifications({ enabled = true, onChatNotificationOpen }: Use
   // Mutation para guardar el token en el servidor
   const { mutate: savePushToken } = trpc.users.savePushToken.useMutation();
   const openChatForNotification = useCallback((notification: Notifications.Notification) => {
-    if (getChatNotificationRoute(notification)) onChatNotificationOpen?.();
+    const intent = getChatNotificationIntent(notification.request.content.data);
+    if (intent) onChatNotificationOpen?.(intent.messageId);
   }, [onChatNotificationOpen]);
 
   useEffect(() => {
@@ -84,6 +81,7 @@ export function useNotifications({ enabled = true, onChatNotificationOpen }: Use
   return {
     expoPushToken,
     notification,
+    dismissNotification: () => setNotification(undefined),
   };
 }
 

@@ -306,3 +306,9 @@
 ## Navegación de notificaciones v19
 - [x] Abrir el chat general al tocar una notificación push de mensaje
 - [x] Validar la navegación y preparar una compilación para pruebas físicas
+
+## Experiencia de recepción de chat v20
+- [x] Mostrar un banner interno cuando llegue un mensaje mientras la aplicación está activa
+- [x] Mostrar un contador de mensajes no leídos en el acceso al chat general
+- [x] Resaltar el mensaje recibido al abrir el chat desde una notificación push
+- [x] Validar los avisos, contador y resaltado de mensajes

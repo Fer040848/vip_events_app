@@ -22,6 +22,8 @@ import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-run
 import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
 import { AdminLoadingState } from "@/components/admin-data-state";
+import { ChatNotificationBanner } from "@/components/chat-notification-banner";
+import { getChatNotificationRoute } from "@/hooks/use-notifications";
 import "@/lib/background-order-sync";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -34,10 +36,16 @@ export const unstable_settings = {
 function StartupGate({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const openChatFromNotification = useCallback(() => {
-    router.push("/(tabs)/chat" as Href);
+  const openChatFromNotification = useCallback((messageId?: number) => {
+    router.push({
+      pathname: "/(tabs)/chat",
+      params: messageId ? { highlight: String(messageId) } : {},
+    } as Href);
   }, [router]);
-  useNotifications({ enabled: Boolean(user), onChatNotificationOpen: openChatFromNotification });
+  const { notification, dismissNotification } = useNotifications({
+    enabled: Boolean(user),
+    onChatNotificationOpen: openChatFromNotification,
+  });
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(loading);
   const contentOpacity = useRef(new Animated.Value(loading ? 0 : 1)).current;
 
@@ -80,6 +88,17 @@ function StartupGate({ children }: { children: ReactNode }) {
         >
           <AdminLoadingState label="Verificando tu acceso privado…" />
         </Animated.View>
+      ) : null}
+      {notification && getChatNotificationRoute(notification) ? (
+        <ChatNotificationBanner
+          title={notification.request.content.title}
+          body={notification.request.content.body}
+          onDismiss={dismissNotification}
+          onPress={() => {
+            dismissNotification();
+            openChatFromNotification(Number(notification.request.content.data?.messageId));
+          }}
+        />
       ) : null}
     </View>
   );

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
 import { SidebarDrawer } from '@/components/sidebar-drawer';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useChatUnreadCount } from '@/hooks/use-chat-unread-count';
 import * as Haptics from 'expo-haptics';
 
 const DRAWER_WIDTH = 280;
@@ -25,6 +26,7 @@ export default function TabLayout() {
   }, [isAuthenticated, loading]);
 
   const isAdmin = (user as any)?.role === 'admin' || (user as any)?.type === 'admin';
+  const { unreadCount } = useChatUnreadCount(user?.id);
 
   const renderDrawer = () => (
     <SidebarDrawer 
@@ -131,6 +133,8 @@ export default function TabLayout() {
           title: 'Chat',
           headerTitle: 'Chat',
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="message.fill" color={color} />,
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: styles.chatBadge,
         }}
       />
       <Tabs.Screen
@@ -248,5 +252,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 999,
+  },
+  chatBadge: {
+    backgroundColor: '#C9A84C',
+    color: '#0A0A0A',
+    fontSize: 10,
+    fontWeight: '800',
   },
 });
