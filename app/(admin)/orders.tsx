@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { createVipOrdersCsv } from "@/lib/vip-order-export";
+import { useAuth } from "@/hooks/use-auth";
+import { useAdminOfflineCache } from "@/lib/admin-offline-cache";
+import { AdminOfflineBanner } from "@/components/admin-data-state";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
@@ -32,17 +35,37 @@ const DATE_RANGES = [
 type DateRange = (typeof DATE_RANGES)[number]["id"];
 
 export default function AdminOrdersScreen() {
+  const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data: orders, isLoading, refetch } = trpc.vipOrders.getAllOrders.useQuery(undefined, {
+  const ordersQuery = trpc.vipOrders.getAllOrders.useQuery(undefined, {
     refetchInterval: 10000, // Poll every 10s
   });
-  const { data: products = [] } = trpc.vipProducts.list.useQuery();
+  const productsQuery = trpc.vipProducts.list.useQuery();
+  const liveOrderData = useMemo(() => {
+    if (!ordersQuery.data || !productsQuery.data) return undefined;
+    return { orders: ordersQuery.data, products: productsQuery.data };
+  }, [ordersQuery.data, productsQuery.data]);
+  const offlineCache = useAdminOfflineCache({
+    accountId: user?.id,
+    scope: "vip-orders",
+    liveData: liveOrderData,
+  });
+  const orderData = liveOrderData ?? offlineCache.cachedData;
+  const orders = orderData?.orders ?? [];
+  const products = orderData?.products ?? [];
+  const isLoading = !orderData && (ordersQuery.isLoading || productsQuery.isLoading || offlineCache.isCacheLoading);
+  const hasDataError = Boolean(ordersQuery.error || productsQuery.error);
+  const isOffline = Boolean(!liveOrderData && offlineCache.cachedData && hasDataError);
+
+  const refreshOrders = useCallback(async () => {
+    await Promise.all([ordersQuery.refetch(), productsQuery.refetch()]);
+  }, [ordersQuery.refetch, productsQuery.refetch]);
 
   const updateStatus = trpc.vipOrders.updateStatus.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => ordersQuery.refetch(),
     onError: (err) => Alert.alert("Error", err.message),
   });
 
@@ -69,7 +92,7 @@ export default function AdminOrdersScreen() {
     if (dateRange === "7d") minimumDate.setDate(minimumDate.getDate() - 6);
     if (dateRange === "30d") minimumDate.setDate(minimumDate.getDate() - 29);
 
-    return (orders ?? []).filter((order) => {
+    return orders.filter((order) => {
       const orderDate = new Date(order.createdAt);
       const inRange = dateRange === "all"
         ? true
@@ -80,7 +103,7 @@ export default function AdminOrdersScreen() {
     });
   }, [dateRange, filterStatus, orders]);
 
-  const pendingCount = orders?.filter((o) => o.status === "pending").length ?? 0;
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
 
   const exportOrders = async (ordersToExport: typeof filteredOrders, fileScope: "vista" | "completo") => {
     if (ordersToExport.length === 0) {
@@ -126,6 +149,7 @@ export default function AdminOrdersScreen() {
     <ScreenContainer containerClassName="bg-background">
       <View style={styles.container}>
         {/* Header */}
+        {isOffline ? <AdminOfflineBanner cachedAt={offlineCache.cachedAt} isRefreshing={ordersQuery.isFetching || productsQuery.isFetching} onRetry={refreshOrders} /> : null}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Pedidos VIP</Text>
@@ -133,7 +157,7 @@ export default function AdminOrdersScreen() {
               <Text style={styles.pendingAlert}>⚠️ {pendingCount} pedido{pendingCount > 1 ? "s" : ""} pendiente{pendingCount > 1 ? "s" : ""}</Text>
             )}
           </View>
-          <TouchableOpacity style={styles.refreshBtn} onPress={() => refetch()}>
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => void refreshOrders()}>
             <Text style={styles.refreshBtnText}>↻ Actualizar</Text>
           </TouchableOpacity>
         </View>
@@ -145,11 +169,11 @@ export default function AdminOrdersScreen() {
             onPress={() => setFilterStatus("all")}
           >
             <Text style={[styles.filterTabText, filterStatus === "all" && styles.filterTabTextActive]}>
-              Todos ({orders?.length ?? 0})
+              Todos ({orders.length})
             </Text>
           </TouchableOpacity>
           {STATUS_ORDER.map((s) => {
-            const count = orders?.filter((o) => o.status === s).length ?? 0;
+            const count = orders.filter((o) => o.status === s).length;
             return (
               <TouchableOpacity
                 key={s}
@@ -188,9 +212,9 @@ export default function AdminOrdersScreen() {
             <Text style={styles.exportButtonText}>{isExporting ? "Generando..." : `Exportar vista (${filteredOrders.length})`}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.exportAllButton, (isExporting || !orders?.length) && styles.exportButtonDisabled]}
-            onPress={() => exportOrders(orders ?? [], "completo")}
-            disabled={isExporting || !orders?.length}
+            style={[styles.exportAllButton, (isExporting || !orders.length) && styles.exportButtonDisabled]}
+            onPress={() => exportOrders(orders, "completo")}
+            disabled={isExporting || !orders.length}
           >
             <Text style={styles.exportAllButtonText}>CSV completo</Text>
           </TouchableOpacity>
@@ -279,8 +303,14 @@ export default function AdminOrdersScreen() {
                   {item.status !== "delivered" && item.status !== "cancelled" && (
                     <TouchableOpacity
                       style={[styles.actionBtn, { backgroundColor: cfg.color + "22", borderColor: cfg.color + "44" }]}
-                      onPress={() => handleUpdateStatus(item.id, item.status ?? "pending", item.userName ?? `Usuario #${item.userId}`)}
-                      disabled={updateStatus.isPending}
+                      onPress={() => {
+                        if (isOffline) {
+                          Alert.alert("Sin conexión", "Los cambios de estado estarán disponibles al recuperar la conexión.");
+                          return;
+                        }
+                        handleUpdateStatus(item.id, item.status ?? "pending", item.userName ?? `Usuario #${item.userId}`);
+                      }}
+                      disabled={updateStatus.isPending || isOffline}
                     >
                       <Text style={[styles.actionBtnText, { color: cfg.color }]}>
                         {updateStatus.isPending ? "Actualizando..." : "Cambiar estado →"}

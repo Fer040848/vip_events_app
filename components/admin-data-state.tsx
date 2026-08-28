@@ -26,6 +26,56 @@ type ErrorStateProps = {
   maxAutoRetries?: number;
 };
 
+type OfflineBannerProps = {
+  cachedAt?: string;
+  isRefreshing?: boolean;
+  onRetry: () => void | Promise<unknown>;
+};
+
+export function AdminOfflineBanner({ cachedAt, isRefreshing = false, onRetry }: OfflineBannerProps) {
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (attempt >= 2 || isRefreshing) return;
+    const timer = setTimeout(() => {
+      setAttempt((current) => current + 1);
+      void onRetry();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [attempt, isRefreshing, onRetry]);
+
+  const savedLabel = cachedAt
+    ? new Date(cachedAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+    : "anterior";
+
+  return (
+    <View style={styles.offlineBanner} accessibilityRole="alert">
+      <View style={styles.offlineDot} />
+      <View style={styles.offlineTextGroup}>
+        <Text style={styles.offlineTitle}>Sin conexión · datos guardados</Text>
+        <Text style={styles.offlineDescription}>
+          {isRefreshing
+            ? "Reconectando de forma segura…"
+            : attempt < 2
+              ? `Puedes seguir consultando la última actualización (${savedLabel}). Reintentando…`
+              : `Puedes seguir consultando la última actualización (${savedLabel}).`}
+        </Text>
+      </View>
+      <TouchableOpacity
+        onPress={() => {
+          setAttempt(0);
+          void onRetry();
+        }}
+        style={styles.offlineRetryButton}
+        disabled={isRefreshing}
+        activeOpacity={0.78}
+      >
+        <Text style={styles.offlineRetryText}>{isRefreshing ? "…" : "↻"}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function AdminErrorState({
   title = "No pudimos cargar esta información",
   description = "Tus datos no se han modificado. Revisa tu conexión e inténtalo nuevamente.",
@@ -223,6 +273,51 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: "#0A0A0A",
     fontSize: 13,
+    fontWeight: "800",
+  },
+  offlineBanner: {
+    alignItems: "center",
+    backgroundColor: "#C9A84C18",
+    borderBottomColor: "#C9A84C44",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  offlineDot: {
+    backgroundColor: "#C9A84C",
+    borderRadius: 4,
+    height: 8,
+    marginRight: 9,
+    width: 8,
+  },
+  offlineTextGroup: {
+    flex: 1,
+  },
+  offlineTitle: {
+    color: "#F5E6C8",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  offlineDescription: {
+    color: "#8A7A5A",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  offlineRetryButton: {
+    alignItems: "center",
+    borderColor: "#C9A84C66",
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: "center",
+    marginLeft: 10,
+    width: 28,
+  },
+  offlineRetryText: {
+    color: "#C9A84C",
+    fontSize: 17,
     fontWeight: "800",
   },
 });

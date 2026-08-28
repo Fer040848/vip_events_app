@@ -1,9 +1,11 @@
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
+import { useCallback, useMemo } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import { AdminErrorState, AdminLoadingState } from "@/components/admin-data-state";
+import { AdminErrorState, AdminLoadingState, AdminOfflineBanner } from "@/components/admin-data-state";
+import { useAdminOfflineCache } from "@/lib/admin-offline-cache";
 
 export default function AdminDashboardScreen() {
   const { user, logout } = useAuth();
@@ -16,15 +18,26 @@ export default function AdminDashboardScreen() {
     { eventId: 0 },
     { enabled: false }
   );
-  const { data: stats } = statsQuery;
-  const { data: events } = eventsQuery;
-  const { data: users } = usersQuery;
-  const isLoading = statsQuery.isLoading || eventsQuery.isLoading || usersQuery.isLoading;
+  const liveDashboard = useMemo(() => {
+    if (!statsQuery.data || !eventsQuery.data || !usersQuery.data) return undefined;
+    return { stats: statsQuery.data, events: eventsQuery.data, users: usersQuery.data };
+  }, [eventsQuery.data, statsQuery.data, usersQuery.data]);
+  const offlineCache = useAdminOfflineCache({
+    accountId: user?.id,
+    scope: "dashboard",
+    liveData: liveDashboard,
+  });
+  const dashboardData = liveDashboard ?? offlineCache.cachedData;
+  const stats = dashboardData?.stats;
+  const events = dashboardData?.events;
+  const users = dashboardData?.users;
+  const isLoading = !dashboardData && (statsQuery.isLoading || eventsQuery.isLoading || usersQuery.isLoading || offlineCache.isCacheLoading);
   const hasDataError = Boolean(statsQuery.error || eventsQuery.error || usersQuery.error);
+  const isOffline = Boolean(!liveDashboard && offlineCache.cachedData && hasDataError);
 
-  const retryDashboard = async () => {
+  const retryDashboard = useCallback(async () => {
     await Promise.all([statsQuery.refetch(), eventsQuery.refetch(), usersQuery.refetch()]);
-  };
+  }, [eventsQuery.refetch, statsQuery.refetch, usersQuery.refetch]);
 
   const handleLogout = () => {
     Alert.alert("Cerrar sesión", "¿Cerrar sesión de administrador?", [
@@ -62,6 +75,7 @@ export default function AdminDashboardScreen() {
   return (
     <ScreenContainer containerClassName="bg-background">
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {isOffline ? <AdminOfflineBanner cachedAt={offlineCache.cachedAt} isRefreshing={statsQuery.isFetching || eventsQuery.isFetching || usersQuery.isFetching} onRetry={retryDashboard} /> : null}
         {/* Header */}
         <View style={styles.header}>
           <View>

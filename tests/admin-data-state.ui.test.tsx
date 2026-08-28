@@ -4,7 +4,7 @@ import type { ReactTestRenderer } from "react-test-renderer";
 import { TouchableOpacity } from "react-native";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminErrorState, AdminLoadingState } from "@/components/admin-data-state";
+import { AdminErrorState, AdminLoadingState, AdminOfflineBanner } from "@/components/admin-data-state";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -64,5 +64,25 @@ describe("estados de interfaz administrativa", () => {
 
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(renderedText(renderer!)).toContain("Seguimos sin conexión. Puedes volver a intentarlo cuando estés listo.");
+  });
+
+  it("mantiene visible el aviso sin conexión y permite solicitar una nueva actualización", async () => {
+    const onRetry = vi.fn().mockResolvedValue(undefined);
+    let renderer: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(
+        <AdminOfflineBanner cachedAt="2026-08-28T00:00:00.000Z" onRetry={onRetry} />,
+      );
+    });
+
+    expect(renderedText(renderer!)).toContain("Sin conexión · datos guardados");
+    expect(renderedText(renderer!)).toContain("Puedes seguir consultando la última actualización");
+
+    await act(async () => {
+      renderer!.root.findByType(TouchableOpacity).props.onPress();
+    });
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

@@ -2,10 +2,10 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, View } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { useScreenProtection } from "@/hooks/use-screen-protection";
@@ -31,16 +31,51 @@ export const unstable_settings = {
 
 function StartupGate({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(loading);
+  const contentOpacity = useRef(new Animated.Value(loading ? 0 : 1)).current;
 
-  if (loading) {
-    return (
-      <View style={styles.startupContainer}>
-        <AdminLoadingState label="Verificando tu acceso privado…" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (loading) {
+      contentOpacity.setValue(0);
+      setShowLoadingOverlay(true);
+      return;
+    }
 
-  return children;
+    const transition = Animated.timing(contentOpacity, {
+      toValue: 1,
+      duration: 240,
+      useNativeDriver: true,
+    });
+    transition.start(({ finished }) => {
+      if (finished) setShowLoadingOverlay(false);
+    });
+
+    return () => transition.stop();
+  }, [contentOpacity, loading]);
+
+  return (
+    <View style={styles.startupContainer}>
+      <Animated.View style={[styles.startupContent, { opacity: contentOpacity }]}>
+        {children}
+      </Animated.View>
+      {showLoadingOverlay ? (
+        <Animated.View
+          pointerEvents="auto"
+          style={[
+            styles.startupOverlay,
+            {
+              opacity: contentOpacity.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0],
+              }),
+            },
+          ]}
+        >
+          <AdminLoadingState label="Verificando tu acceso privado…" />
+        </Animated.View>
+      ) : null}
+    </View>
+  );
 }
 
 export default function RootLayout() {
@@ -149,6 +184,13 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   startupContainer: {
     flex: 1,
+    backgroundColor: "#0A0A0A",
+  },
+  startupContent: {
+    flex: 1,
+  },
+  startupOverlay: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "#0A0A0A",
   },
 });

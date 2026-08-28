@@ -290,3 +290,9 @@
 
 ## Corrección de compilación Android
 - [x] Diagnosticar y corregir el fallo de instalación de dependencias en EAS Android
+
+## Continuidad sin conexión v17
+- [x] Guardar en caché los datos administrativos esenciales para uso sin conexión
+- [x] Mostrar una pantalla de estado sin conexión con los datos disponibles en caché
+- [x] Aplicar una transición suave entre la carga inicial y el contenido principal
+- [x] Validar los flujos de caché y preparar la siguiente compilación Android
