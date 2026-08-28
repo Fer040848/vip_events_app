@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,8 @@ import { createVipOrdersCsv } from "@/lib/vip-order-export";
 import { useAuth } from "@/hooks/use-auth";
 import { useAdminOfflineCache } from "@/lib/admin-offline-cache";
 import { AdminOfflineBanner } from "@/components/admin-data-state";
+import { getPendingOrderChanges, hasInternetConnection, queueOrderStatusChange } from "@/lib/pending-order-sync";
+import { usePendingOrderSync } from "@/hooks/use-pending-order-sync";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
@@ -39,6 +41,7 @@ export default function AdminOrdersScreen() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const [isExporting, setIsExporting] = useState(false);
+  const [queuedOrderIds, setQueuedOrderIds] = useState<number[]>([]);
 
   const ordersQuery = trpc.vipOrders.getAllOrders.useQuery(undefined, {
     refetchInterval: 10000, // Poll every 10s
@@ -64,18 +67,58 @@ export default function AdminOrdersScreen() {
     await Promise.all([ordersQuery.refetch(), productsQuery.refetch()]);
   }, [ordersQuery.refetch, productsQuery.refetch]);
 
+  const refreshQueuedOrders = useCallback(async () => {
+    if (!user?.id) return;
+    const changes = await getPendingOrderChanges(user.id);
+    setQueuedOrderIds(changes.map((change) => change.orderId));
+  }, [user?.id]);
+
+  const handleQueuedOrdersSynced = useCallback(async () => {
+    await refreshQueuedOrders();
+    await refreshOrders();
+  }, [refreshOrders, refreshQueuedOrders]);
+
+  const { sync: syncQueuedOrders } = usePendingOrderSync(user?.id, handleQueuedOrdersSynced);
+
+  useEffect(() => {
+    void refreshQueuedOrders();
+  }, [refreshQueuedOrders]);
+
   const updateStatus = trpc.vipOrders.updateStatus.useMutation({
     onSuccess: () => ordersQuery.refetch(),
-    onError: (err) => Alert.alert("Error", err.message),
   });
+
+  const submitOrderStatusChange = async (id: number, status: (typeof STATUS_ORDER)[number]) => {
+    if (!user?.id) return;
+
+    const queueChange = async () => {
+      const pending = await queueOrderStatusChange(user.id, { orderId: id, status });
+      setQueuedOrderIds(pending.map((change) => change.orderId));
+      Alert.alert(
+        "Cambio preparado",
+        "El estado se guardó de forma segura y se enviará automáticamente al recuperar conexión.",
+      );
+    };
+
+    try {
+      if (!await hasInternetConnection()) {
+        await queueChange();
+        return;
+      }
+      await updateStatus.mutateAsync({ id, status });
+      await refreshQueuedOrders();
+    } catch {
+      await queueChange();
+    }
+  };
 
   const handleUpdateStatus = (id: number, currentStatus: string, userName: string) => {
     const nextStatuses = STATUS_ORDER.filter((s) => s !== currentStatus && s !== "cancelled");
     const options = nextStatuses.map((s) => ({
       text: `${STATUS_CONFIG[s].icon} ${STATUS_CONFIG[s].label}`,
-      onPress: () => updateStatus.mutate({ id, status: s }),
+      onPress: () => void submitOrderStatusChange(id, s),
     }));
-    options.push({ text: "❌ Cancelar pedido", onPress: () => updateStatus.mutate({ id, status: "cancelled" }) });
+    options.push({ text: "❌ Cancelar pedido", onPress: () => void submitOrderStatusChange(id, "cancelled") });
     options.push({ text: "Cerrar", onPress: () => {} });
 
     Alert.alert(
@@ -303,17 +346,15 @@ export default function AdminOrdersScreen() {
                   {item.status !== "delivered" && item.status !== "cancelled" && (
                     <TouchableOpacity
                       style={[styles.actionBtn, { backgroundColor: cfg.color + "22", borderColor: cfg.color + "44" }]}
-                      onPress={() => {
-                        if (isOffline) {
-                          Alert.alert("Sin conexión", "Los cambios de estado estarán disponibles al recuperar la conexión.");
-                          return;
-                        }
-                        handleUpdateStatus(item.id, item.status ?? "pending", item.userName ?? `Usuario #${item.userId}`);
-                      }}
-                      disabled={updateStatus.isPending || isOffline}
+                      onPress={() => handleUpdateStatus(item.id, item.status ?? "pending", item.userName ?? `Usuario #${item.userId}`)}
+                      disabled={updateStatus.isPending}
                     >
-                      <Text style={[styles.actionBtnText, { color: cfg.color }]}>
-                        {updateStatus.isPending ? "Actualizando..." : "Cambiar estado →"}
+                      <Text style={[styles.actionBtnText, { color: cfg.color }]}> 
+                        {updateStatus.isPending
+                          ? "Actualizando..."
+                          : queuedOrderIds.includes(item.id)
+                            ? "Cambio pendiente de envío"
+                            : "Cambiar estado →"}
                       </Text>
                     </TouchableOpacity>
                   )}

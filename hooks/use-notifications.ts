@@ -16,7 +16,11 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export function useNotifications() {
+type UseNotificationsOptions = {
+  enabled?: boolean;
+};
+
+export function useNotifications({ enabled = true }: UseNotificationsOptions = {}) {
   const [expoPushToken, setExpoPushToken] = useState<string>('');
   const [notification, setNotification] = useState<Notifications.Notification | undefined>();
   const notificationListener = useRef<Notifications.Subscription | null>(null);
@@ -26,6 +30,7 @@ export function useNotifications() {
   const { mutate: savePushToken } = trpc.users.savePushToken.useMutation();
 
   useEffect(() => {
+    if (!enabled || Platform.OS === 'web') return;
     // Registrar para notificaciones push
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
@@ -55,7 +60,7 @@ export function useNotifications() {
         responseListener.current.remove();
       }
     };
-  }, []);
+  }, [enabled, savePushToken]);
 
   return {
     expoPushToken,
@@ -68,8 +73,8 @@ async function registerForPushNotificationsAsync() {
 
   // Crear canal de notificación para Android
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
+    await Notifications.setNotificationChannelAsync('afterroom_chat', {
+      name: 'Chat general',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#C9A84C',
@@ -110,7 +115,6 @@ async function registerForPushNotificationsAsync() {
       })
     ).data;
 
-    console.log('Expo push token:', token);
   } catch (error) {
     console.error('Error getting push token:', error);
     return null;

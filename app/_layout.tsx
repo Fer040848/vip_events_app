@@ -20,7 +20,9 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { useAuth } from "@/hooks/use-auth";
+import { useNotifications } from "@/hooks/use-notifications";
 import { AdminLoadingState } from "@/components/admin-data-state";
+import "@/lib/background-order-sync";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -30,7 +32,8 @@ export const unstable_settings = {
 };
 
 function StartupGate({ children }: { children: ReactNode }) {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
+  useNotifications({ enabled: Boolean(user) });
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(loading);
   const contentOpacity = useRef(new Animated.Value(loading ? 0 : 1)).current;
 

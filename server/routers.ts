@@ -6,6 +6,47 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { storagePut } from "./storage";
 
+async function sendChatPushNotifications(senderId: number, senderName: string, message: string, messageId: number) {
+  const tokens = await db.getPushTokensExcludingUser(senderId);
+  if (tokens.length === 0) return { sent: 0, failed: 0 };
+
+  const body = message.replace(/\s+/g, " ").trim().slice(0, 160);
+  const payloads = tokens.map((token) => ({
+    to: token,
+    title: "Nuevo mensaje en el chat VIP",
+    body: `${senderName}: ${body}`,
+    data: { type: "chat_message", messageId, url: "/(tabs)/chat" },
+    sound: "default" as const,
+    priority: "high" as const,
+    channelId: "afterroom_chat",
+  }));
+
+  let sent = 0;
+  let failed = 0;
+  for (let index = 0; index < payloads.length; index += 100) {
+    const chunk = payloads.slice(index, index + 100);
+    try {
+      const response = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Accept-Encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(chunk),
+      });
+      const result = await response.json() as { data?: Array<{ status?: string }> };
+      for (const receipt of result.data ?? []) {
+        if (receipt.status === "ok") sent += 1;
+        else failed += 1;
+      }
+    } catch {
+      failed += chunk.length;
+    }
+  }
+  return { sent, failed };
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -280,15 +321,21 @@ export const appRouter = router({
       db.getLatestChatMessages(input.afterId, 80)
     ),
     // Send a message
-    send: protectedProcedure.input(z.object({ message: z.string().min(1).max(1000) })).mutation(({ ctx, input }) => {
+    send: protectedProcedure.input(z.object({ message: z.string().min(1).max(1000) })).mutation(async ({ ctx, input }) => {
       const userCode = (ctx.user as any).openId?.replace("code_", "") ?? "";
-      return db.createChatMessage({
+      const messageId = await db.createChatMessage({
         userId: ctx.user.id,
         userName: ctx.user.name ?? "Invitado",
         userCode,
         isAdmin: ctx.user.role === "admin",
         message: input.message,
       });
+      try {
+        await sendChatPushNotifications(ctx.user.id, ctx.user.name ?? "Invitado", input.message, Number(messageId));
+      } catch (error) {
+        console.warn("[Chat push] No se pudo notificar el nuevo mensaje", error);
+      }
+      return messageId;
     }),
     // Update presence (heartbeat)
     heartbeat: protectedProcedure.mutation(({ ctx }) => {

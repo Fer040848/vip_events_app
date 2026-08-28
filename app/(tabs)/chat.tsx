@@ -16,18 +16,6 @@ import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import * as Haptics from "expo-haptics";
-import * as Notifications from "expo-notifications";
-
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 type ChatMessage = {
   id: number;
@@ -121,34 +109,6 @@ export default function ChatScreen() {
   const sendMutation = trpc.chat.send.useMutation();
   const heartbeatMutation = trpc.chat.heartbeat.useMutation();
   const offlineMutation = trpc.chat.offline.useMutation();
-  const savePushToken = trpc.users.savePushToken.useMutation();
-
-  // Register push notifications
-  useEffect(() => {
-    if (!user || Platform.OS === "web") return;
-    registerForPushNotifications();
-  }, [user]);
-
-  const registerForPushNotifications = async () => {
-    try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== "granted") return;
-
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: "vip-events-app",
-      });
-      if (tokenData?.data) {
-        await savePushToken.mutateAsync({ token: tokenData.data });
-      }
-    } catch (e) {
-      // Push token registration is optional, don't crash
-    }
-  };
 
   // Load initial messages
   const loadInitialMessages = useCallback(async () => {

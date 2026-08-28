@@ -592,6 +592,17 @@ export async function getAllPushTokens(): Promise<string[]> {
   return result.map((r) => r.pushToken!).filter(Boolean);
 }
 
+export async function getPushTokensExcludingUser(userId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const { ne } = await import("drizzle-orm");
+  const result = await db
+    .select({ pushToken: users.pushToken })
+    .from(users)
+    .where(and(ne(users.id, userId), isNotNull(users.pushToken)));
+  return result.map((row) => row.pushToken!).filter(Boolean);
+}
+
 export async function getPushTokensByUserIds(userIds: number[]): Promise<string[]> {
   const db = await getDb();
   if (!db) return [];

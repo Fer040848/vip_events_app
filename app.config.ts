@@ -88,6 +88,15 @@ const config: ExpoConfig = {
     "expo-asset",
     "expo-font",
     "expo-web-browser",
+    "expo-background-task",
+    [
+      "expo-notifications",
+      {
+        color: "#C9A84C",
+        defaultChannel: "afterroom_chat",
+        enableBackgroundRemoteNotifications: true,
+      },
+    ],
     [
       "expo-audio",
       {

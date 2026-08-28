@@ -296,3 +296,9 @@
 - [x] Mostrar una pantalla de estado sin conexión con los datos disponibles en caché
 - [x] Aplicar una transición suave entre la carga inicial y el contenido principal
 - [x] Validar los flujos de caché y preparar la siguiente compilación Android
+
+## Sincronización y chat v18
+- [x] Guardar en una cola local los cambios de pedido que no se puedan enviar
+- [x] Enviar automáticamente la cola al recuperar conexión o reactivar la aplicación
+- [x] Enviar push a destinatarios autorizados cuando llegue un mensaje de chat general
+- [x] Configurar los módulos nativos y validar los flujos de sincronización y chat
