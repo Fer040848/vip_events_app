@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams } from "expo-router";
+import { useChatUnreadCount } from "@/hooks/use-chat-unread-count";
 
 type ChatMessage = {
   id: number;
@@ -45,6 +46,7 @@ type Reaction = { id: number; messageId: number; userId: number; userName: strin
 
 export default function ChatScreen() {
   const { user } = useAuth();
+  const { markChatRead } = useChatUnreadCount(user?.id);
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
   const [message, setMessage] = useState("");
   const [showOnline, setShowOnline] = useState(false);
@@ -354,14 +356,27 @@ export default function ChatScreen() {
           <Text style={styles.headerTitle}>💬 Chat VIP</Text>
           <Text style={styles.headerSub}>Actualiza cada 5 segundos</Text>
         </View>
-        <TouchableOpacity
-          style={styles.onlineBtn}
-          onPress={() => { setShowOnline(true); refetchOnline(); }}
-          activeOpacity={0.8}
-        >
-          <View style={styles.onlineDot} />
-          <Text style={styles.onlineBtnText}>{onlineCount} en línea</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.readAllBtn}
+            onPress={() => {
+              markChatRead();
+              if (Platform.OS !== "web") Haptics.selectionAsync();
+            }}
+            accessibilityLabel="Marcar todos los mensajes como leídos"
+            activeOpacity={0.8}
+          >
+            <Text style={styles.readAllBtnText}>✓ Leído</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.onlineBtn}
+            onPress={() => { setShowOnline(true); refetchOnline(); }}
+            activeOpacity={0.8}
+          >
+            <View style={styles.onlineDot} />
+            <Text style={styles.onlineBtnText}>{onlineCount} en línea</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -554,6 +569,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#222",
     gap: 6,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  readAllBtn: {
+    backgroundColor: "#2B230F",
+    borderColor: "#C9A84C66",
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+  },
+  readAllBtnText: {
+    color: "#C9A84C",
+    fontSize: 11,
+    fontWeight: "800",
   },
   onlineDot: {
     width: 8,

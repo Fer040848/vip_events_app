@@ -33,6 +33,8 @@ describe("contrato de push para el chat general", () => {
     const rootLayout = readSource("app/_layout.tsx");
     const tabLayout = readSource("app/(tabs)/_layout.tsx");
     const chat = readSource("app/(tabs)/chat.tsx");
+    const profile = readSource("app/(tabs)/profile.tsx");
+    const banner = readSource("components/chat-notification-banner.tsx");
 
     expect(notificationHook).toContain("getChatNotificationRoute");
     expect(notificationHook).toContain("addNotificationResponseReceivedListener");
@@ -44,5 +46,9 @@ describe("contrato de push para el chat general", () => {
     expect(tabLayout).toContain("tabBarBadge: unreadCount > 0 ? unreadCount : undefined");
     expect(chat).toContain("useLocalSearchParams<{ highlight?: string }>()");
     expect(chat).toContain("styles.bubbleHighlighted");
+    expect(chat).toContain("markChatRead()");
+    expect(profile).toContain("useChatPreferences()");
+    expect(profile).toContain("Banners de chat");
+    expect(banner).toContain("Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)");
   });
 });

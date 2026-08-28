@@ -312,3 +312,9 @@
 - [x] Mostrar un contador de mensajes no leídos en el acceso al chat general
 - [x] Resaltar el mensaje recibido al abrir el chat desde una notificación push
 - [x] Validar los avisos, contador y resaltado de mensajes
+
+## Preferencias de comunicación v21
+- [x] Permitir silenciar los banners internos de mensajes por usuario
+- [x] Añadir acción para marcar todos los mensajes como leídos desde el chat
+- [x] Dar retroalimentación háptica sutil al mostrar un banner en primer plano
+- [x] Validar preferencias y acciones rápidas del chat

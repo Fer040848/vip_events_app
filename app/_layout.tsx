@@ -24,6 +24,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { AdminLoadingState } from "@/components/admin-data-state";
 import { ChatNotificationBanner } from "@/components/chat-notification-banner";
 import { getChatNotificationRoute } from "@/hooks/use-notifications";
+import { ChatPreferencesProvider, useChatPreferences } from "@/hooks/use-chat-preferences";
 import "@/lib/background-order-sync";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -35,7 +36,16 @@ export const unstable_settings = {
 
 function StartupGate({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  return (
+    <ChatPreferencesProvider accountId={user?.id}>
+      <StartupContent user={user} loading={loading}>{children}</StartupContent>
+    </ChatPreferencesProvider>
+  );
+}
+
+function StartupContent({ children, loading, user }: { children: ReactNode; loading: boolean; user: ReturnType<typeof useAuth>["user"] }) {
   const router = useRouter();
+  const { bannersEnabled, isReady: preferencesReady } = useChatPreferences();
   const openChatFromNotification = useCallback((messageId?: number) => {
     router.push({
       pathname: "/(tabs)/chat",
@@ -89,7 +99,7 @@ function StartupGate({ children }: { children: ReactNode }) {
           <AdminLoadingState label="Verificando tu acceso privado…" />
         </Animated.View>
       ) : null}
-      {notification && getChatNotificationRoute(notification) ? (
+      {preferencesReady && bannersEnabled && notification && getChatNotificationRoute(notification) ? (
         <ChatNotificationBanner
           title={notification.request.content.title}
           body={notification.request.content.body}

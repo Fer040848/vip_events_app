@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import * as Haptics from "expo-haptics";
+import { useChatPreferences } from "@/hooks/use-chat-preferences";
 
 const PAYMENT_PROOF_STATUS = {
   pending: { title: "Comprobante en revisión", detail: "Un administrador revisará tu comprobante pronto.", color: "#C9A84C", icon: "◷" },
@@ -30,6 +31,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { colorScheme, setColorScheme } = useThemeContext();
   const isDark = colorScheme === "dark";
+  const { bannersEnabled, setBannersEnabled } = useChatPreferences();
   const [showNameModal, setShowNameModal] = useState(false);
   const [newName, setNewName] = useState("");
   const utils = trpc.useUtils();
@@ -285,6 +287,30 @@ export default function ProfileScreen() {
               <Text style={styles.actionIcon}>👑</Text>
               <Text style={styles.actionText}>Mis pedidos VIP</Text>
               <Text style={styles.actionChevron}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.preferenceSectionTitle}>Comunicación</Text>
+          <View style={styles.themeToggleCard}>
+            <View style={styles.themeToggleLeft}>
+              <Text style={styles.themeToggleIcon}>💬</Text>
+              <View>
+                <Text style={styles.themeToggleTitle}>Banners de chat</Text>
+                <Text style={styles.themeToggleSub}>{bannersEnabled ? "Mostrar avisos dentro de la app" : "Avisos internos silenciados"}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.themeSwitch, bannersEnabled && styles.themeSwitchActive]}
+              onPress={() => {
+                setBannersEnabled(!bannersEnabled);
+                if (Platform.OS !== "web") Haptics.selectionAsync();
+              }}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: bannersEnabled }}
+              accessibilityLabel="Activar banners de chat"
+              activeOpacity={0.8}
+            >
+              <View style={[styles.themeSwitchThumb, bannersEnabled && styles.themeSwitchThumbActive]} />
             </TouchableOpacity>
           </View>
 
@@ -546,6 +572,14 @@ const styles = StyleSheet.create({
     borderColor: "#2A2A2A",
     overflow: "hidden",
     marginBottom: 16,
+  },
+  preferenceSectionTitle: {
+    color: "#8A7A5A",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    marginBottom: 8,
+    textTransform: "uppercase",
   },
   actionItem: {
     flexDirection: "row",

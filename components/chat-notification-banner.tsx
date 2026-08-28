@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 
 type ChatNotificationBannerProps = {
   title?: string | null;
@@ -18,6 +19,9 @@ export function ChatNotificationBanner({ title, body, onPress, onDismiss }: Chat
       Animated.timing(translateY, { toValue: 0, duration: 180, useNativeDriver: true }),
     ]);
     enter.start();
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => undefined);
+    }
     const timeout = setTimeout(onDismiss, 5_000);
     return () => {
       enter.stop();
