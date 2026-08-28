@@ -23,7 +23,18 @@ describe("contrato de push para el chat general", () => {
 
     expect(config).toContain('"expo-background-task"');
     expect(config).toContain('"expo-notifications"');
-    expect(rootLayout).toContain("useNotifications({ enabled: Boolean(user) })");
+    expect(rootLayout).toContain("useNotifications({ enabled: Boolean(user), onChatNotificationOpen: openChatFromNotification })");
     expect(chat).not.toContain('projectId: "vip-events-app"');
+  });
+
+  it("permite abrir exclusivamente el chat cuando el usuario toca su aviso push", () => {
+    const notificationHook = readSource("hooks/use-notifications.ts");
+    const rootLayout = readSource("app/_layout.tsx");
+
+    expect(notificationHook).toContain("getChatNotificationRoute");
+    expect(notificationHook).toContain("addNotificationResponseReceivedListener");
+    expect(notificationHook).toContain("getLastNotificationResponseAsync");
+    expect(rootLayout).toContain("onChatNotificationOpen: openChatFromNotification");
+    expect(rootLayout).toContain('router.push("/(tabs)/chat" as Href)');
   });
 });

@@ -1,6 +1,6 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -33,7 +33,11 @@ export const unstable_settings = {
 
 function StartupGate({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
-  useNotifications({ enabled: Boolean(user) });
+  const router = useRouter();
+  const openChatFromNotification = useCallback(() => {
+    router.push("/(tabs)/chat" as Href);
+  }, [router]);
+  useNotifications({ enabled: Boolean(user), onChatNotificationOpen: openChatFromNotification });
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(loading);
   const contentOpacity = useRef(new Animated.Value(loading ? 0 : 1)).current;
 

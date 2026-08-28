@@ -302,3 +302,7 @@
 - [x] Enviar automáticamente la cola al recuperar conexión o reactivar la aplicación
 - [x] Enviar push a destinatarios autorizados cuando llegue un mensaje de chat general
 - [x] Configurar los módulos nativos y validar los flujos de sincronización y chat
+
+## Navegación de notificaciones v19
+- [x] Abrir el chat general al tocar una notificación push de mensaje
+- [x] Validar la navegación y preparar una compilación para pruebas físicas

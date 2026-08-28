@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -18,9 +18,19 @@ Notifications.setNotificationHandler({
 
 type UseNotificationsOptions = {
   enabled?: boolean;
+  onChatNotificationOpen?: () => void;
 };
 
-export function useNotifications({ enabled = true }: UseNotificationsOptions = {}) {
+export const CHAT_NOTIFICATION_ROUTE = '/(tabs)/chat';
+
+export function getChatNotificationRoute(notification: Notifications.Notification) {
+  const data = notification.request.content.data;
+  return data?.type === 'chat_message' && data?.url === CHAT_NOTIFICATION_ROUTE
+    ? CHAT_NOTIFICATION_ROUTE
+    : null;
+}
+
+export function useNotifications({ enabled = true, onChatNotificationOpen }: UseNotificationsOptions = {}) {
   const [expoPushToken, setExpoPushToken] = useState<string>('');
   const [notification, setNotification] = useState<Notifications.Notification | undefined>();
   const notificationListener = useRef<Notifications.Subscription | null>(null);
@@ -28,6 +38,9 @@ export function useNotifications({ enabled = true }: UseNotificationsOptions = {
 
   // Mutation para guardar el token en el servidor
   const { mutate: savePushToken } = trpc.users.savePushToken.useMutation();
+  const openChatForNotification = useCallback((notification: Notifications.Notification) => {
+    if (getChatNotificationRoute(notification)) onChatNotificationOpen?.();
+  }, [onChatNotificationOpen]);
 
   useEffect(() => {
     if (!enabled || Platform.OS === 'web') return;
@@ -47,9 +60,15 @@ export function useNotifications({ enabled = true }: UseNotificationsOptions = {
 
     // Listener para cuando el usuario toca una notificación
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('Notification response:', response);
-      // Aquí puedes manejar la navegación basada en la notificación
+      openChatForNotification(response.notification);
     });
+
+    // Si la app se abrió desde una notificación, aplica el mismo destino seguro.
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) openChatForNotification(response.notification);
+      })
+      .catch(() => undefined);
 
     // Limpiar listeners al desmontar
     return () => {
@@ -60,7 +79,7 @@ export function useNotifications({ enabled = true }: UseNotificationsOptions = {
         responseListener.current.remove();
       }
     };
-  }, [enabled, savePushToken]);
+  }, [enabled, openChatForNotification, savePushToken]);
 
   return {
     expoPushToken,
